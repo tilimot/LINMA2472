@@ -13,27 +13,27 @@ Follow the steps detailed [here](https://support.ceci-hpc.be/doc/_contents/Quick
 
 In order to copy files from your computer to the cluster, you can use `scp`. For instance copy the notebook from your computer with:
 ```sh
-$ scp gan.ipynb manneback:.
+(your computer) $ scp gan.ipynb manneback:.
 ```
 This repository also contain 3 scripts to help you install the required dependencies for the projet and launch JupyterLab.
 Copy these scripts to the cluster with:
 ```sh
-$ scp install.sh load.sh notebook.sh manneback:.
+(your computer) $ scp install.sh load.sh notebook.sh manneback:.
 ```
 
 You should now be able to connect to the manneback cluster with
 ```sh
-$ ssh manneback
+(your computer) $ ssh manneback
 ```
 
 Start by installing the dependencies using (you should do this only once, not everytime you connect to the cluster):
 ```sh
-$ source install.sh
+(manneback cluster) $ source install.sh
 ```
 
 In order to start an instance of JupyterLab in the cluster, run
 ```sh
-$ source notebook.sh
+(manneback cluster) $ source notebook.sh
 ```
 Now, follow the instructions [here](https://support.ceci-hpc.be/doc/_contents/UsingSoftwareAndLibraries/Jupyter/index.html#connect-to-the-jupyterhub-interface) to use this instance of JupyterLab from a web browser of your computer.
 
