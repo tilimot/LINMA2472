@@ -27,13 +27,16 @@ You should now be able to connect to the manneback cluster with
 
 Start by installing the dependencies using (you should do this only once, not everytime you connect to the cluster):
 ```sh
-(manneback cluster) $ source install.sh
-```
+(manneback cluster) $ bash install.sh
+```h
 
 In order to start an instance of JupyterLab in the cluster, run
 ```sh
-(manneback cluster) $ source notebook.sh
+(manneback cluster) $ bash notebook.sh
 ```
 Now, follow the instructions [here](https://support.ceci-hpc.be/doc/_contents/UsingSoftwareAndLibraries/Jupyter/index.html#connect-to-the-jupyterhub-interface) to use this instance of JupyterLab from a web browser of your computer.
+
+Note that the jupyter notebook is running on a login node, note a compute node, so without any GPU!
+In order to provide more resources to JupyterLab, [submit the job `bash notebook.sh` with Slurm](https://support.ceci-hpc.be/doc/_contents/QuickStart/SubmittingJobs/SlurmTutorial.html).
 
 If you have any issues following these steps, don't hesitate to let us know on the [Class Forum on Moodle](https://moodle.uclouvain.be/mod/forum/view.php?id=43330).
