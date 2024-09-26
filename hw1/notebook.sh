@@ -1,2 +1,2 @@
 source load.sh
-jupyter lab --ip $(hostname -i)
+python -m jupyterlab --ip $(hostname -i)
