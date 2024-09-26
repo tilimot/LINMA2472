@@ -11,12 +11,11 @@ In order to use the CECI clusters, first [create an account](https://login.ceci-
 You will receive an email, follow the link in the email and in the field labelled "Email of Supervising Professor", enter `benoit.legat@uclouvain.be`.
 Follow the steps detailed [here](https://support.ceci-hpc.be/doc/_contents/QuickStart/ConnectingToTheClusters/index.html) in order to download your private key, create the corresponding public key and create the file `.ssh/config`.
 
-In order to copy files from your computer to the cluster, you can use `scp`. For instance copy the notebook from your computer with:
+Follow [this guide](https://support.ceci-hpc.be/doc/_contents/ManagingFiles/TransferringFilesEffectively.html) to copy the notebook as well as the three scripts `install.sh`, `load.sh` and `notebook.sh` from your computer to the cluster. For instance, with `scp` you can copy the notebook from your computer with:
 ```sh
 (your computer) $ scp gan.ipynb manneback:.
 ```
-This repository also contain 3 scripts to help you install the required dependencies for the projet and launch JupyterLab.
-Copy these scripts to the cluster with:
+and copy the scripts to the cluster with:
 ```sh
 (your computer) $ scp install.sh load.sh notebook.sh manneback:.
 ```
