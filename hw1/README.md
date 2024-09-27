@@ -28,17 +28,10 @@ You should now be able to connect to the manneback cluster with
 Start by installing the dependencies using (you should do this only once, not everytime you connect to the cluster):
 ```sh
 (manneback cluster) $ bash install.sh
-```h
-
-In order to start an instance of JupyterLab in the cluster, run
-```sh
-(manneback cluster) $ bash notebook.sh
 ```
-Now, follow the instructions [here](https://support.ceci-hpc.be/doc/_contents/UsingSoftwareAndLibraries/Jupyter/index.html#connect-to-the-jupyterhub-interface) to use this instance of JupyterLab from a web browser of your computer.
 
-Note that the jupyter notebook is running on a login node, note a compute node, so without any GPU!
 In order to provide more resources to JupyterLab, [submit the job `bash notebook.sh` with Slurm](https://support.ceci-hpc.be/doc/_contents/QuickStart/SubmittingJobs/SlurmTutorial.html).
-The file `submit.sh` gives an example of submission script to use to request a GPU. You can use it wit
+The file `submit.sh` gives an example of submission script to use to request a GPU (see [here](https://www.ceci-hpc.be/scriptgen.html) for a helper for writing your own submission script). You can use it wit
 ```sh
 (manneback cluster) $ sbatch submit.sh
 ```
@@ -46,5 +39,9 @@ The output produced by the job is written in the file `slurm-<JOBID>.out` where 
 ```sh
 (manneback cluster) $ squeue --me
 ```
+At the end of the file, you should copy-paste the url given by Jupyter as you will need you give this url (appended with `/24`) to `sshuttle` in the next step.
+Now, follow the instructions [here](https://support.ceci-hpc.be/doc/_contents/UsingSoftwareAndLibraries/Jupyter/index.html#connect-to-the-jupyterhub-interface) to use this instance of JupyterLab from a web browser of your computer.
+
+Note that if you do `(manneback cluster) $ bash notebook.sh` directly without using `sbatch` or `srun`, the notebook will run on the *login node* which has limited resources as it is only meant for you to connect and send jobs via Slurm that are executed on *compute nodes*, you will also not have any GPU on the login node.
 
 If you have any issues following these steps, don't hesitate to let us know on the [Class Forum on Moodle](https://moodle.uclouvain.be/mod/forum/view.php?id=43330).
