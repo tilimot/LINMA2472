@@ -32,7 +32,7 @@ Start by installing the dependencies using (you should do this only once, not ev
 ```
 
 In order to provide more resources to JupyterLab, [submit the job `bash notebook.sh` with Slurm](https://support.ceci-hpc.be/doc/_contents/QuickStart/SubmittingJobs/SlurmTutorial.html).
-The file `submit.sh` gives an example of submission script to use to request a GPU (see [here](https://www.ceci-hpc.be/scriptgen.html) for a helper for writing your own submission script). You can use it wit
+The file `submit.sh` gives an example of submission script to use to request a GPU (see [here](https://www.ceci-hpc.be/scriptgen.html) for a helper for writing your own submission script). You can use it with
 ```sh
 (manneback cluster) $ sbatch submit.sh
 ```
