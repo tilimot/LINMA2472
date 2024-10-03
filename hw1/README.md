@@ -7,7 +7,8 @@ Alternatively, you can use the CECI clusers by following the instructions below.
 
 ## CECI cluster
 
-In order to use the CECI clusters, first [create an account](https://login.ceci-hpc.be/init/).
+In order to use the CECI clusters, you need a CECI account.
+If you don't already have an account (if you don't know whether you have an account, chances are you don't have one), first [create one](https://login.ceci-hpc.be/init/).
 You will receive an email, follow the link in the email and in the field labelled "Email of Supervising Professor", enter `benoit.legat@uclouvain.be`.
 Follow the steps detailed [here](https://support.ceci-hpc.be/doc/_contents/QuickStart/ConnectingToTheClusters/index.html) in order to download your private key, create the corresponding public key and create the file `.ssh/config`.
 
