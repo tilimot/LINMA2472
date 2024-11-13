@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.46
+# v0.20.0
 
 using Markdown
 using InteractiveUtils
@@ -122,11 +122,21 @@ Equivalently, we still use one-hot encoding but we add an encoder
 """
 
 # ╔═╡ bcf7667f-f99b-4d10-af84-5d3879f1db5d
-qa(html"What difference do you expect with respect to the previous model ?",
-   md"""
-The products ``W_1C`` and ``DW_d`` have the same dimension as the matrices ``W_1`` and ``W_d`` of the previous model. So the expressive power of the model was not improved while we increased the number of parameters and we potentially made the loss function "even more nonconvex". The input embedding ``C`` become useful when we we have share the embedding with more than one character, i.e., ``n_\text{ctx} > 1``.
-The output embedding ``D`` is useful when it is not preceded by a linear linear with which it can just be merged. Forcing ``D = C^\top`` appears to work well in practice $(cite("press2017Using")), this is what is used in $(cite("vaswani2017Attentiona")).
+qa(
+html"What difference do you expect with respect to the previous model ?",
+md"""
+The products ``W_1C`` and ``DW_d`` have the same dimension as the matrices ``W_1`` and ``W_d`` of the previous model. So the expressive power of the model was not improved while we increased the number of parameters and we potentially made the loss function "even more nonconvex".
+
+If the hidden dimension (i.e., the number of rows of ``C`` / columns of ``W_1`` or the number of rows of ``W_d`` / columns of ``D``) is much smaller than ``d_\text{emb}``, then it's faster to compute ``W_1(Cx)``. Moreover, we are forcing the matrix ``W_1C`` to have a low rank compared the model without ``C``. This means less expressivness but it might also prevent overfitting so the case isn't so clear.
+
+The case become clearer when the input embedding ``C`` is shared between more than one character, i.e., ``n_\text{ctx} > 1``.
+Same for the output embedding ``D`` is useful when it is not preceded by a linear with which it can just be merged.
 """)
+
+# ╔═╡ 2a7e5096-1e8d-4506-96d2-86de0a7d39aa
+md"""
+Forcing ``D = C^\top`` appears to work well in practice $(cite("press2017Using")), this is what is used in $(cite("vaswani2017Attentiona")).
+"""
 
 # ╔═╡ eb18303f-3dfb-4b87-90f2-f6dc542d7221
 bib(["press2017Using", "vaswani2017Attentiona"])
@@ -164,6 +174,9 @@ qa(md"What are the number of columns of ``W_1`` and number of rows of ``W_2`` no
    md"""
 The matrix ``W_1`` has ``n_\text{ctx}d_\text{emb}`` columns. Assuming ``d_\text{emb} \ll n_\text{voc}`` and ``n_\text{ctx} \gg 1``, this is much smaller than the number ``n_\text{ctx}n_\text{voc}`` that we would have without the embedding. The number of rows of ``W_2`` is ``n_\text{voc}``, unaffected by the embedding.
 """)
+
+# ╔═╡ 76e2f97b-1c06-40cd-b134-d5155aa5587d
+bib(["bengio2000Neural"])
 
 # ╔═╡ f8330700-e964-4e19-9c55-2b11df45789e
 frametitle("Embedding sizes in LLMs")
@@ -304,7 +317,7 @@ K^\top Q & =
 # ╔═╡ 5150d8f3-6e85-43f2-801a-eae5cc3e3095
 HAlign(
 	md"""
-`softmax` is then applied to each **row**:
+`softmax` is then applied to each **column**:
 ```math
 \text{softmax}(K^\top Q/\sqrt{d_k})
 ```
@@ -314,7 +327,7 @@ preferable regions $(cite("vaswani2017Attentiona", "Secton 3.2.1")).
 Illustrated on the right from $(cite("bahdanau2016Neural", "Figure 3(a)")).
 
 ```math
-\text{Attention}(V, K, Q) = V\text{softmax}(QK^\top/\sqrt{d_k})
+\text{Attention}(V, K, Q) = V\text{softmax}(K^\top Q/\sqrt{d_k})
 ```
 """,
 	img("attention_matrix"),
@@ -322,6 +335,35 @@ Illustrated on the right from $(cite("bahdanau2016Neural", "Figure 3(a)")).
 
 # ╔═╡ c032b3ff-c539-4e38-81d0-39b28b3a8076
 bib(["bahdanau2016Neural", "vaswani2017Attentiona"])
+
+# ╔═╡ 76ba4e9b-8bb0-47c4-b607-2ca711f035e6
+frametitle("Masked Attention")
+
+# ╔═╡ 0c0c1163-0aec-4089-9acc-539b3a86d0b3
+HAlign(
+md"""
+```math
+\begin{multline}
+\text{Masked-Attention}(V, K, Q)\\
+=
+V\text{softmax}((K^\top Q + M)/\sqrt{d_k})
+\end{multline}
+```
+""",
+md"""
+Mask to reflect "predict next token" problem:
+```math
+M
+=
+\begin{bmatrix}
+  0 & 0 & \cdots & 0\\
+  -\infty & 0 & \ddots & \vdots\\
+  \vdots & \ddots & \ddots & 0\\
+  -\infty & \cdots & -\infty & 0
+\end{bmatrix}
+```
+""",
+)
 
 # ╔═╡ b7583418-f4fb-4c63-b421-b5b9af269768
 frametitle("Multi-Head Attention")
@@ -339,6 +381,16 @@ Different heads to focus on different aspects:
 \end{align}
 ```
 See $(cite("vaswani2017Attentiona", "Figure 2")) on the right.
+
+Similarly, in the masked case:
+```math
+\begin{align}
+	\text{head}_j & = \text{Masked-Attention}(W_j^VV, W_j^KK, W_j^QQ)\\
+	\text{Masked-MultiHead}&(V, K, Q)
+	=
+	W^O\text{Concat}(\text{head}_1, \ldots, \text{head}_h)
+\end{align}
+```
 """,
 	img("multi-head", :width => 250)),
 	[70, 30],
@@ -347,40 +399,8 @@ See $(cite("vaswani2017Attentiona", "Figure 2")) on the right.
 # ╔═╡ 6fc13413-53de-4c75-9b9e-620e0b7f8a1f
 qa(md"Is ``W^O`` needed if ``h = 1`` ?", md"No, if ``h = 1``, we can merge ``W^OW_1^V`` into a new ``W_1^V``.")
 
-# ╔═╡ 76ba4e9b-8bb0-47c4-b607-2ca711f035e6
-frametitle("Masked Attention")
-
-# ╔═╡ b9caae1a-38aa-4d01-9cda-3d6782fb0e03
-HAlign(
-md"""
-```math
-\begin{multline}
-\text{Masked-Attention}(V, K, Q)\\
-=
-V\text{softmax}((K^\top Q + M)/\sqrt{d_k})
-\end{multline}
-```
-Replace Attention by Masked-Attention to obtain Masked-MultiHead.
-
-Self-Attention with embedding ``C`` is:
-```math
-\text{Masked-MultiHead}(CX, CX, CX)
-```
-""",
-md"""
-Mask to reflect "predict next token" problem:
-```math
-M
-=
-\begin{bmatrix}
-  0 & 0 & \cdots & 0\\
-  -\infty & 0 & \ddots & \vdots\\
-  \vdots & \ddots & \ddots & 0\\
-  -\infty & \cdots & -\infty & 0
-\end{bmatrix}
-```
-""",
-)
+# ╔═╡ a3efd921-eb14-4901-9d6c-800cc812fe02
+frametitle("Self-Attention")
 
 # ╔═╡ 4b61363d-87c9-4755-8286-44df34e9dd6a
 qa(
@@ -472,6 +492,25 @@ function highlight(a, b, c, d)
 	setopacity(1)
 	polysmooth(box(Point(a, b), Point(c, d), vertices=true), 10, action = :stroke)
 end
+
+# ╔═╡ b9caae1a-38aa-4d01-9cda-3d6782fb0e03
+HAlign(md"""
+Self-Attention with embedding ``C`` is:
+```math
+\text{Masked-MultiHead}(CX, CX, CX)
+```
+
+The embedding vectors ``CX`` take then different projections
+for value, key, query and also for different heads!
+```math
+\text{head}_j = \text{Masked-Attention}(W_j^VCX, W_j^KCX, W_j^QCX)
+```
+""",
+HTML(html(@draw begin
+	draw_transformer()
+	highlight(200, 250, 375, 350)
+end 300 400)),
+)
 
 # ╔═╡ c5be3956-5102-4d88-bfdb-9813c0555fe1
 HAlign(
@@ -1596,11 +1635,13 @@ version = "3.5.0+0"
 # ╟─e2eca085-9f99-4e3a-9db4-e7f692aedd34
 # ╟─9e898325-e9e2-45bd-af74-3dd86f00f7b5
 # ╟─bcf7667f-f99b-4d10-af84-5d3879f1db5d
+# ╟─2a7e5096-1e8d-4506-96d2-86de0a7d39aa
 # ╟─eb18303f-3dfb-4b87-90f2-f6dc542d7221
 # ╟─6aa690e9-389f-4398-abae-b95060db4d90
 # ╟─9cb90e76-3bb5-41ff-bc79-c4949400d904
 # ╟─6712c883-b407-47e1-a666-4de05f8f8d6e
 # ╟─c4bebd0d-eacf-4db4-b5b3-4dca50ab9e1b
+# ╟─76e2f97b-1c06-40cd-b134-d5155aa5587d
 # ╟─f8330700-e964-4e19-9c55-2b11df45789e
 # ╟─91abc03b-fef7-4f93-96fc-13f1cf654f0d
 # ╟─75ca478c-916f-464a-9435-8208ee726d50
@@ -1627,10 +1668,12 @@ version = "3.5.0+0"
 # ╟─9ff95a9a-192b-4a12-8e2e-7acd6659c066
 # ╟─5150d8f3-6e85-43f2-801a-eae5cc3e3095
 # ╟─c032b3ff-c539-4e38-81d0-39b28b3a8076
+# ╟─76ba4e9b-8bb0-47c4-b607-2ca711f035e6
+# ╟─0c0c1163-0aec-4089-9acc-539b3a86d0b3
 # ╟─b7583418-f4fb-4c63-b421-b5b9af269768
 # ╟─d014e6aa-92f6-4ca1-be47-516565d1bb20
 # ╟─6fc13413-53de-4c75-9b9e-620e0b7f8a1f
-# ╟─76ba4e9b-8bb0-47c4-b607-2ca711f035e6
+# ╟─a3efd921-eb14-4901-9d6c-800cc812fe02
 # ╟─b9caae1a-38aa-4d01-9cda-3d6782fb0e03
 # ╟─4b61363d-87c9-4755-8286-44df34e9dd6a
 # ╟─453544fc-0e3e-4e04-8c0c-192f3a038884
