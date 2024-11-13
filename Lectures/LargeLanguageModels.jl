@@ -357,7 +357,7 @@ md"""
 \begin{multline}
 \text{Masked-Attention}(V, K, Q)\\
 =
-V\text{softmax}(\min(K^\top Q, M)/\sqrt{d_k})
+V\text{softmax}((K^\top Q + M)/\sqrt{d_k})
 \end{multline}
 ```
 Replace Attention by Masked-Attention to obtain Masked-MultiHead.
@@ -373,10 +373,10 @@ Mask to reflect "predict next token" problem:
 M
 =
 \begin{bmatrix}
-  -\infty & \infty & \cdots & \infty\\
-  -\infty & -\infty & \ddots & \vdots\\
-  \vdots & \ddots & \ddots & \infty\\
-  -\infty & \cdots & -\infty & -\infty
+  0 & 0 & \cdots & 0\\
+  -\infty & 0 & \ddots & \vdots\\
+  \vdots & \ddots & \ddots & 0\\
+  -\infty & \cdots & -\infty & 0
 \end{bmatrix}
 ```
 """,
