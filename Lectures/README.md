@@ -1,5 +1,7 @@
 # Large Language Models and Diffusion Models
 
+[<img src="https://plutojl.org/assets/favicon.svg" height="20"/>![](https://img.shields.io/badge/Notebooks-View-blue.svg)<img src="https://plutojl.org/assets/favicon.svg" height="20"/>](https://blegat.github.io/LINMA2472/)
+
 This folder contains the [Pluto](https://plutojl.org/) notebooks of the course. There are two options to visualize them.
 
 ## Option 1 : Static version
