@@ -4,7 +4,7 @@ To visualize the [Pluto](https://plutojl.org/) notebooks, there are two options.
 
 ## Option 1 : Static version
 
-Follow [this link](https://blegat.github.io/LINMA2472/) with your web browser.
+[<img src="https://raw.githubusercontent.com/fonsp/Pluto.jl/dd0ead4caa2d29a3a2cfa1196d31e3114782d363/frontend/img/logo_white_contour.svg" height="16"/> notebooks](https://blegat.github.io/LINMA2472/) ← Follow this link with your web browser.
 To visualize it as slides, open the javascript console of your web browser and enter `present()`. To leave this slide mode, enter `present()` again.
 To enter full screen mode, use `F11` on your keyboard.
 
