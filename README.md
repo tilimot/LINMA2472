@@ -1,7 +1,7 @@
 # LINMA2472 Algorithms in data science
 
-[UCLouvain](https://uclouvain.be/en-cours-2024-linma2472)
-[Moodle](https://moodle.uclouvain.be/enrol/index.php?id=1189)
+[<img src="https://upload.wikimedia.org/wikipedia/commons/7/72/UCLouvain_logo.svg" height="20"/>](https://uclouvain.be/en-cours-2024-linma2472)
+[<img src="https://upload.wikimedia.org/wikipedia/commons/c/c6/Moodle-logo.svg" height="16"/>](https://moodle.uclouvain.be/enrol/index.php?id=1189)
 
 This repository contains different resources for the LINMA2472 courses given at UCLouvain.
 See the README in each subfolder for more details and troubleshooting:
