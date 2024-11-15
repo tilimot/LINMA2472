@@ -108,7 +108,7 @@ frametitle("Text to vectors : step 2 → embedding")
 md"""
 Consider one-hot encoding with vocabulary size ``n_\text{voc}`` and a *bigram model*
 ```math
-\hat{p}(x_0 | x_{-1}) = \text{softmax}(W_d \tanh(\cdots\tanh(W_1 x)\cdots)
+\hat{p}(x_0 | x_{-1}) = \text{softmax}(W_d \tanh(\cdots\tanh(W_1 x_{-1})\cdots)
 ```
 The matrix ``W_d`` has ``n_\text{voc}`` rows and ``W_1`` has ``n_\text{voc}`` columns → issue if ``n_\text{voc}`` is large
 
@@ -117,7 +117,7 @@ The matrix ``W_d`` has ``n_\text{voc}`` rows and ``W_1`` has ``n_\text{voc}`` co
 Equivalently, we still use one-hot encoding but we add an encoder
 ``C \in \mathbb{R}^{d_\text{emb} \times n_\text{voc}}`` and decoder ``D \in \mathbb{R}^{n_\text{voc} \times d_\text{emb}}``
 ```math
-\hat{p}(x_0 | x_{-1}) = \text{softmax}(D W_d \tanh(\cdots\tanh(W_1 C x)\cdots)
+\hat{p}(x_0 | x_{-1}) = \text{softmax}(D W_d \tanh(\cdots\tanh(W_1 C x_{-1})\cdots)
 ```
 """
 
@@ -338,6 +338,11 @@ bib(["bahdanau2016Neural", "vaswani2017Attentiona"])
 
 # ╔═╡ 76ba4e9b-8bb0-47c4-b607-2ca711f035e6
 frametitle("Masked Attention")
+
+# ╔═╡ 8c27b182-0c3c-4c19-9619-df62b7dd6bf0
+md"""
+💡 **Key idea** In the model for ``\hat{p}(x_0 | x_{-1}, \ldots, x_{-n_\text{ctx}})``, incorporate sub-models ``\bar{p}(x_0 | x_{-1}, \ldots, x_{-n_\text{ctx}})``, ``\bar{p}(x_{-1} | x_{-2}, \ldots, x_{-n_\text{ctx}})``, ..., , ``\bar{p}(x_{-n_\text{ctx}+1} | x_{-n_\text{ctx}})``.
+"""
 
 # ╔═╡ 0c0c1163-0aec-4089-9acc-539b3a86d0b3
 HAlign(
@@ -1669,6 +1674,7 @@ version = "3.5.0+0"
 # ╟─5150d8f3-6e85-43f2-801a-eae5cc3e3095
 # ╟─c032b3ff-c539-4e38-81d0-39b28b3a8076
 # ╟─76ba4e9b-8bb0-47c4-b607-2ca711f035e6
+# ╠═8c27b182-0c3c-4c19-9619-df62b7dd6bf0
 # ╟─0c0c1163-0aec-4089-9acc-539b3a86d0b3
 # ╟─b7583418-f4fb-4c63-b421-b5b9af269768
 # ╟─d014e6aa-92f6-4ca1-be47-516565d1bb20
