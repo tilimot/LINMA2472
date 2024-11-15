@@ -215,23 +215,20 @@ K^\top Q & =
 frametitle("Masked Attention")
 
 # ╔═╡ 8c27b182-0c3c-4c19-9619-df62b7dd6bf0
-md"""
-💡 **Key idea** In the model for ``\hat{p}(x_0 | x_{-1}, \ldots, x_{-n_\text{ctx}})``, incorporate sub-models ``\bar{p}(x_0 | x_{-1}, \ldots, x_{-n_\text{ctx}})``, ``\bar{p}(x_{-1} | x_{-2}, \ldots, x_{-n_\text{ctx}})``, ..., , ``\bar{p}(x_{-n_\text{ctx}+1} | x_{-n_\text{ctx}})``.
-"""
-
-# ╔═╡ 0c0c1163-0aec-4089-9acc-539b3a86d0b3
 HAlign(
 md"""
+💡 **Key idea** In the model for ``\hat{p}(x_0 | x_{-1}, \ldots, x_{-n_\text{ctx}})``, incorporate sub-models
 ```math
-\begin{multline}
-\text{Masked-Attention}(V, K, Q)\\
-=
-V\text{softmax}((K^\top Q + M)/\sqrt{d_k})
-\end{multline}
+\begin{align}
+\bar{p}(&x_0 | x_{-1}, \ldots, x_{-n_\text{ctx}})\\
+\bar{p}(&x_{-1} | x_{-2}, \ldots, x_{-n_\text{ctx}})\\
+& \quad\qquad\vdots\\
+\bar{p}(&x_{-n_\text{ctx}+1} | x_{-n_\text{ctx}}).
+\end{align}
 ```
 """,
 md"""
-Mask to reflect "predict next token" problem:
+Mask prevent ``\hat{p}`` to look input the future:
 ```math
 M
 =
@@ -244,6 +241,15 @@ M
 ```
 """,
 )
+
+# ╔═╡ 0c0c1163-0aec-4089-9acc-539b3a86d0b3
+md"""
+```math
+\text{Masked-Attention}(V, K, Q)\
+=
+V\text{softmax}(M + K^\top Q/\sqrt{d_k})
+```
+"""
 
 # ╔═╡ b7583418-f4fb-4c63-b421-b5b9af269768
 frametitle("Multi-Head Attention")
@@ -273,6 +279,9 @@ frametitle("Layer normalization")
 
 # ╔═╡ e383bb72-49a1-4df1-84c3-b95a2ffe00f5
 frametitle("Feed-Forward network")
+
+# ╔═╡ af8194a1-a358-4cf7-b446-6b377cb76687
+md"The feed-forward network is implemented **independently** for the output of each query so each query can be processed independently through each **layer**. The next layer allows each queries to then look at the results of the result of the previous layer for **past** (because of the mask) queries."
 
 # ╔═╡ 79e6c4a8-cc1e-40cc-bb09-e9a7a9a8e475
 frametitle("Transformer variations")
@@ -506,7 +515,7 @@ end
 
 # ╔═╡ b9caae1a-38aa-4d01-9cda-3d6782fb0e03
 HAlign(md"""
-Self-Attention with embedding ``C`` is:
+*Self-Attention* with embedding ``C`` is:
 ```math
 \text{Masked-MultiHead}(CX, CX, CX)
 ```
@@ -1755,7 +1764,7 @@ version = "3.5.0+0"
 # ╟─5150d8f3-6e85-43f2-801a-eae5cc3e3095
 # ╟─c032b3ff-c539-4e38-81d0-39b28b3a8076
 # ╟─76ba4e9b-8bb0-47c4-b607-2ca711f035e6
-# ╠═8c27b182-0c3c-4c19-9619-df62b7dd6bf0
+# ╟─8c27b182-0c3c-4c19-9619-df62b7dd6bf0
 # ╟─0c0c1163-0aec-4089-9acc-539b3a86d0b3
 # ╟─b7583418-f4fb-4c63-b421-b5b9af269768
 # ╟─d014e6aa-92f6-4ca1-be47-516565d1bb20
@@ -1773,6 +1782,7 @@ version = "3.5.0+0"
 # ╟─2a8433e3-9a3b-487b-abf3-09278ea42389
 # ╟─e383bb72-49a1-4df1-84c3-b95a2ffe00f5
 # ╟─f95a6de6-5e02-4237-88ba-ec44ef3d38c3
+# ╟─af8194a1-a358-4cf7-b446-6b377cb76687
 # ╟─79e6c4a8-cc1e-40cc-bb09-e9a7a9a8e475
 # ╟─d1ba8da3-add8-4dbe-9ebf-9a32fa5cd5dd
 # ╟─4dd7083a-e730-4f4b-bde8-fc1a5b08ebfc
