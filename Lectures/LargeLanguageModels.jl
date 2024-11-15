@@ -13,18 +13,6 @@ include("utils.jl")
 # ╔═╡ 95ec4140-9147-11ef-2af4-5528bad0e6f5
 section("Large Language Models (LLMs)")
 
-# ╔═╡ f4366cf6-2be0-42b8-96c4-120be3f5c25e
-md"""
-### References
-
-* Recurrent neural networks $(cite("goodfellow2016Deep", "Chapter 10"))
-* Transformers $(cite("vaswani2017Attentiona"))
-* [Neural Networks: Zero to Hero](https://karpathy.ai/zero-to-hero.html) by Andrej Karpathy
-"""
-
-# ╔═╡ 61dc1905-338f-4bfd-a158-2f6bacff769e
-bib(["goodfellow2016Deep", "vaswani2017Attentiona"])
-
 # ╔═╡ c09ec483-9fcf-48e7-b3c0-2508289e3cf3
 frametitle("Autoregressive Models")
 
@@ -74,19 +62,10 @@ md"""
 # ╔═╡ 57c2c944-0d91-489d-8ad7-f5520e71ef3e
 frametitle("Byte Pair Encoding")
 
-# ╔═╡ 0583ee0c-3802-4e81-b179-a80a82493b43
-md"""
-Byte Pair Encoding algorithm $(cite("sennrich2016Neural")) greedily merges the most frequent pair of tokens over the dataset into a new token.
-Most used implementations are `SentencePiece` $(cite("kudo2018SentencePiece")) and `tiktoken` (play with it [here](https://tiktokenizer.vercel.app/)). For instance, on [this example](https://en.wikipedia.org/wiki/Byte_pair_encoding), the pair `('a', 'a')` is the most frequent so we substitute it by a new token, say `'Z'`:
-"""
-
 # ╔═╡ c3db7eb2-356a-428f-9777-6369662d8b06
 md"""
 Note that the new tokens can also be part of the most frequence pair!
 """
-
-# ╔═╡ 4df0a18d-cb14-41b1-ba40-fd6bfcbb0b03
-bib(["sennrich2016Neural", "kudo2018SentencePiece"])
 
 # ╔═╡ 2e8b1a77-1f04-4035-8d82-4061d81ecb7a
 frametitle("Increasing length of \"past text\"")
@@ -97,9 +76,6 @@ md"""
 
 Length of "past text" increases with vocabulary size ``n_\text{voc}`` and context window ``n_\text{ctx}``.
 """
-
-# ╔═╡ 97463c54-7cc7-4497-a8a6-6422f5f582bd
-bib(["team2024Gemini", "team2024Geminia", "team2024Gemma", "team2024Gemmaa", "sennrich2016Neural", "radford2019Language", "brown2020Language", "touvron2023Llama", "yu2023MEGABYTE"])
 
 # ╔═╡ e2eca085-9f99-4e3a-9db4-e7f692aedd34
 frametitle("Text to vectors : step 2 → embedding")
@@ -133,22 +109,8 @@ The case become clearer when the input embedding ``C`` is shared between more th
 Same for the output embedding ``D`` is useful when it is not preceded by a linear with which it can just be merged.
 """)
 
-# ╔═╡ 2a7e5096-1e8d-4506-96d2-86de0a7d39aa
-md"""
-Forcing ``D = C^\top`` appears to work well in practice $(cite("press2017Using")), this is what is used in $(cite("vaswani2017Attentiona")).
-"""
-
-# ╔═╡ eb18303f-3dfb-4b87-90f2-f6dc542d7221
-bib(["press2017Using", "vaswani2017Attentiona"])
-
 # ╔═╡ 6aa690e9-389f-4398-abae-b95060db4d90
 frametitle("Shared embedding")
-
-# ╔═╡ 9cb90e76-3bb5-41ff-bc79-c4949400d904
-md"""
-With ``n_\text{ctx} > 1``, the encoder ``C`` is shared by all tokens:
-See for instance the network below taken from $(cite("bengio2000Neural", "Figure 1")), the first popular application of neural nets for languages:
-"""
 
 # ╔═╡ 6712c883-b407-47e1-a666-4de05f8f8d6e
 HAlign(
@@ -175,60 +137,14 @@ qa(md"What are the number of columns of ``W_1`` and number of rows of ``W_2`` no
 The matrix ``W_1`` has ``n_\text{ctx}d_\text{emb}`` columns. Assuming ``d_\text{emb} \ll n_\text{voc}`` and ``n_\text{ctx} \gg 1``, this is much smaller than the number ``n_\text{ctx}n_\text{voc}`` that we would have without the embedding. The number of rows of ``W_2`` is ``n_\text{voc}``, unaffected by the embedding.
 """)
 
-# ╔═╡ 76e2f97b-1c06-40cd-b134-d5155aa5587d
-bib(["bengio2000Neural"])
-
 # ╔═╡ f8330700-e964-4e19-9c55-2b11df45789e
 frametitle("Embedding sizes in LLMs")
-
-# ╔═╡ 75ca478c-916f-464a-9435-8208ee726d50
-bib(["team2024Gemma", "team2024Gemmaa", "radford2019Language", "touvron2023Llama"])
 
 # ╔═╡ 4e10271c-49f8-4f1d-869c-5fa11275d7f6
 section("Recurrent neural networks (RNN)")
 
-# ╔═╡ 55a09acc-84da-491c-86ba-9a66f4ea52fe
-HAlign(
-md"""
-```math
-\begin{align}
-h^{(t+1)} & = \tanh(Wh^{(t)} + Ux^{(t+1)} + b)\\
-o^{(t)} &= Vh^{(t)} + c\\
-\hat{y}^{(t)} &= \text{softmax}(o^{(t)})
-\end{align}
-```
-Illustrated on the right $(cite("goodfellow2016Deep", "Figure 10.3")).
-
-RNNs as language model showcased in $(cite("mikolov2010Recurrent")).
-
-**Issue**: Time and space complexity proportional to ``n_\text{ctx}`` and **cannot parallelize** to speed up.
-""",
-img("RNN")
-)
-
-# ╔═╡ 5b4a67a9-e33e-4dc6-b9f0-fd9a2cca6f2a
-bib(["mikolov2010Recurrent", "goodfellow2016Deep"])
-
 # ╔═╡ d54b5390-0ec0-4ff8-ab18-51726482ca46
 frametitle("Extensions of RNNs")
-
-# ╔═╡ 225e58ba-b78d-4a0a-be4f-ad642c879b93
-md"""
-It's difficult to model long-term dependencies as their gradient either vanish or explodes exponentially (think of the power method) $(cite("goodfellow2016Deep", "Section 10.7"))
-
-*Gated* extensions attempting to solve this issue $(cite("goodfellow2016Deep", "Section 10.10")):
-
-* Long short-term memory (LSTM) $(cite("graves2014Generating"))
-* Gated recurrent unit (GRU) $(cite("cho2014Properties"))
-"""
-
-# ╔═╡ a21fbc70-9137-4d0e-8c8c-cbdc5269778f
-md"""
-Recently, Mamba suggests a solution to the complexity issue $(cite("gu2024Mamba")). As it scales better with ``n_\text{ctx}``, it is even suggested to get rid of the tokenizer : $(cite("wang2024MambaByte")).
-"""
-
-# ╔═╡ 8eafcfed-9771-4d99-b0c5-bd75a6dab012
-bib(["cho2014Properties", "graves2014Generating", "goodfellow2016Deep", "gu2024Mamba", "wang2024MambaByte"])
 
 # ╔═╡ 55435b26-7fc3-4c8b-8013-6fd4fb65a08e
 frametitle("Numerical dictionary")
@@ -255,22 +171,6 @@ numerical_lookup(dict, [0.8, 0.2])
 # ╔═╡ 8d231f2c-4b0c-4c37-a746-16e98d4cafc8
 frametitle("Attention head")
 
-# ╔═╡ 86101f07-67c5-4df2-911c-4013c44d6c5b
-md"""
-Attention head provides a differentiable numerical dictionary $(cite("bahdanau2016Neural"))
-```math
-\begin{align}
-\alpha
-& =
-\text{softmax}(\langle q, k_1 \rangle, \ldots, \langle q, k_{n_\text{ctx}}\rangle)
-&
-\text{Attention}(q, k, v)
-& =
-\sum_{i=1}^{n_\text{ctx}} \alpha_i v_i
-\end{align}
-```
-"""
-
 # ╔═╡ 570fa160-3adb-463e-99b8-b7dd05076908
 function softmax(x)
 	y = exp.(x)
@@ -287,9 +187,6 @@ end
 
 # ╔═╡ 1faa4ab2-6c93-47dc-b631-8be52780fe7d
 softmax_lookup(dict, [0.8, 0.2])
-
-# ╔═╡ e41d13ca-1dc1-45ae-9fa6-a83c4101120d
-bib(["bahdanau2016Neural"])
 
 # ╔═╡ bf563783-9784-4c74-a7b1-6d7a3ed618c5
 frametitle("Matrix form of attention")
@@ -313,28 +210,6 @@ K^\top Q & =
 \end{align}
 ```
 """
-
-# ╔═╡ 5150d8f3-6e85-43f2-801a-eae5cc3e3095
-HAlign(
-	md"""
-`softmax` is then applied to each **column**:
-```math
-\text{softmax}(K^\top Q/\sqrt{d_k})
-```
-Division by ``\sqrt{d_k}`` scales the input of softmax to
-preferable regions $(cite("vaswani2017Attentiona", "Secton 3.2.1")).
-
-Illustrated on the right from $(cite("bahdanau2016Neural", "Figure 3(a)")).
-
-```math
-\text{Attention}(V, K, Q) = V\text{softmax}(K^\top Q/\sqrt{d_k})
-```
-""",
-	img("attention_matrix"),
-)
-
-# ╔═╡ c032b3ff-c539-4e38-81d0-39b28b3a8076
-bib(["bahdanau2016Neural", "vaswani2017Attentiona"])
 
 # ╔═╡ 76ba4e9b-8bb0-47c4-b607-2ca711f035e6
 frametitle("Masked Attention")
@@ -373,6 +248,148 @@ M
 # ╔═╡ b7583418-f4fb-4c63-b421-b5b9af269768
 frametitle("Multi-Head Attention")
 
+# ╔═╡ 6fc13413-53de-4c75-9b9e-620e0b7f8a1f
+qa(md"Is ``W^O`` needed if ``h = 1`` ?", md"No, if ``h = 1``, we can merge ``W^OW_1^V`` into a new ``W_1^V``.")
+
+# ╔═╡ a3efd921-eb14-4901-9d6c-800cc812fe02
+frametitle("Self-Attention")
+
+# ╔═╡ 4b61363d-87c9-4755-8286-44df34e9dd6a
+qa(
+html"Is the order between the token taken into account by the model ?",
+md"""
+No. Since the same matrices ``W_j^V``, ``W_j^K`` and ``W_j^Q`` multiply the different position. The **position** information is completely **lost**!
+"""
+)
+
+# ╔═╡ 453544fc-0e3e-4e04-8c0c-192f3a038884
+frametitle("Positional encoding")
+
+# ╔═╡ 92e01e21-ca77-43fc-9bf8-0c5a7aaed1bb
+frametitle("Residual connection")
+
+# ╔═╡ f2cba2aa-c541-4692-a441-e65741750a15
+frametitle("Layer normalization")
+
+# ╔═╡ e383bb72-49a1-4df1-84c3-b95a2ffe00f5
+frametitle("Feed-Forward network")
+
+# ╔═╡ 79e6c4a8-cc1e-40cc-bb09-e9a7a9a8e475
+frametitle("Transformer variations")
+
+# ╔═╡ a5b20939-9afa-48c0-aa67-cbca6bc99804
+frametitle("Cost of LLMs")
+
+# ╔═╡ 8d6ec2b3-997e-4df5-a3b2-c1dffa53d0ec
+md"Homework for next week : What is the inference cost of LLMs with respect to ``d_\text{emb}``, ``n_\text{voc}``, ``n_\text{ctx}``, ``d_\text{ff}``, ``h`` and ``N`` ?"
+
+# ╔═╡ f572e113-b36b-4a6b-96c7-c26f100e1ad4
+md"## Utils"
+
+# ╔═╡ f6f7376e-9984-4289-b8ff-9d47e5358791
+import DocumenterCitations, CSV, Logging
+
+# ╔═╡ 1d5b1b7c-828c-4a16-b446-cff21b015d45
+biblio = load_biblio!()
+
+# ╔═╡ 94ae440d-0644-49db-9461-f1a1ff1d7f87
+cite(args...) = bibcite(biblio, args...)
+
+# ╔═╡ f4366cf6-2be0-42b8-96c4-120be3f5c25e
+md"""
+### References
+
+* Recurrent neural networks $(cite("goodfellow2016Deep", "Chapter 10"))
+* Transformers $(cite("vaswani2017Attentiona"))
+* [Neural Networks: Zero to Hero](https://karpathy.ai/zero-to-hero.html) by Andrej Karpathy
+"""
+
+# ╔═╡ 0583ee0c-3802-4e81-b179-a80a82493b43
+md"""
+Byte Pair Encoding algorithm $(cite("sennrich2016Neural")) greedily merges the most frequent pair of tokens over the dataset into a new token.
+Most used implementations are `SentencePiece` $(cite("kudo2018SentencePiece")) and `tiktoken` (play with it [here](https://tiktokenizer.vercel.app/)). For instance, on [this example](https://en.wikipedia.org/wiki/Byte_pair_encoding), the pair `('a', 'a')` is the most frequent so we substitute it by a new token, say `'Z'`:
+"""
+
+# ╔═╡ 2a7e5096-1e8d-4506-96d2-86de0a7d39aa
+md"""
+Forcing ``D = C^\top`` appears to work well in practice $(cite("press2017Using")), this is what is used in $(cite("vaswani2017Attentiona")).
+"""
+
+# ╔═╡ 9cb90e76-3bb5-41ff-bc79-c4949400d904
+md"""
+With ``n_\text{ctx} > 1``, the encoder ``C`` is shared by all tokens:
+See for instance the network below taken from $(cite("bengio2000Neural", "Figure 1")), the first popular application of neural nets for languages:
+"""
+
+# ╔═╡ 55a09acc-84da-491c-86ba-9a66f4ea52fe
+HAlign(
+md"""
+```math
+\begin{align}
+h^{(t+1)} & = \tanh(Wh^{(t)} + Ux^{(t+1)} + b)\\
+o^{(t)} &= Vh^{(t)} + c\\
+\hat{y}^{(t)} &= \text{softmax}(o^{(t)})
+\end{align}
+```
+Illustrated on the right $(cite("goodfellow2016Deep", "Figure 10.3")).
+
+RNNs as language model showcased in $(cite("mikolov2010Recurrent")).
+
+**Issue**: Time and space complexity proportional to ``n_\text{ctx}`` and **cannot parallelize** to speed up.
+""",
+img("RNN")
+)
+
+# ╔═╡ 225e58ba-b78d-4a0a-be4f-ad642c879b93
+md"""
+It's difficult to model long-term dependencies as their gradient either vanish or explodes exponentially (think of the power method) $(cite("goodfellow2016Deep", "Section 10.7"))
+
+*Gated* extensions attempting to solve this issue $(cite("goodfellow2016Deep", "Section 10.10")):
+
+* Long short-term memory (LSTM) $(cite("graves2014Generating"))
+* Gated recurrent unit (GRU) $(cite("cho2014Properties"))
+"""
+
+# ╔═╡ a21fbc70-9137-4d0e-8c8c-cbdc5269778f
+md"""
+Recently, Mamba suggests a solution to the complexity issue $(cite("gu2024Mamba")). As it scales better with ``n_\text{ctx}``, it is even suggested to get rid of the tokenizer : $(cite("wang2024MambaByte")).
+"""
+
+# ╔═╡ 86101f07-67c5-4df2-911c-4013c44d6c5b
+md"""
+Attention head provides a differentiable numerical dictionary $(cite("bahdanau2016Neural"))
+```math
+\begin{align}
+\alpha
+& =
+\text{softmax}(\langle q, k_1 \rangle, \ldots, \langle q, k_{n_\text{ctx}}\rangle)
+&
+\text{Attention}(q, k, v)
+& =
+\sum_{i=1}^{n_\text{ctx}} \alpha_i v_i
+\end{align}
+```
+"""
+
+# ╔═╡ 5150d8f3-6e85-43f2-801a-eae5cc3e3095
+HAlign(
+	md"""
+`softmax` is then applied to each **column**:
+```math
+\text{softmax}(K^\top Q/\sqrt{d_k})
+```
+Division by ``\sqrt{d_k}`` scales the input of softmax to
+preferable regions $(cite("vaswani2017Attentiona", "Secton 3.2.1")).
+
+Illustrated on the right from $(cite("bahdanau2016Neural", "Figure 3(a)")).
+
+```math
+\text{Attention}(V, K, Q) = V\text{softmax}(K^\top Q/\sqrt{d_k})
+```
+""",
+	img("attention_matrix"),
+)
+
 # ╔═╡ d014e6aa-92f6-4ca1-be47-516565d1bb20
 HAlign((
 	md"""
@@ -401,58 +418,47 @@ Similarly, in the masked case:
 	[70, 30],
 )
 
-# ╔═╡ 6fc13413-53de-4c75-9b9e-620e0b7f8a1f
-qa(md"Is ``W^O`` needed if ``h = 1`` ?", md"No, if ``h = 1``, we can merge ``W^OW_1^V`` into a new ``W_1^V``.")
+# ╔═╡ 4f1d5112-dbac-4eb6-8518-0dc4193c3f8e
+bib(args...) = bibrefs(biblio, args...)
 
-# ╔═╡ a3efd921-eb14-4901-9d6c-800cc812fe02
-frametitle("Self-Attention")
+# ╔═╡ 61dc1905-338f-4bfd-a158-2f6bacff769e
+bib(["goodfellow2016Deep", "vaswani2017Attentiona"])
 
-# ╔═╡ 4b61363d-87c9-4755-8286-44df34e9dd6a
-qa(
-html"Is the order between the token taken into account by the model ?",
-md"""
-No. Since the same matrices ``W_j^V``, ``W_j^K`` and ``W_j^Q`` multiply the different position. The **position** information is completely **lost**!
-"""
-)
+# ╔═╡ 4df0a18d-cb14-41b1-ba40-fd6bfcbb0b03
+bib(["sennrich2016Neural", "kudo2018SentencePiece"])
 
-# ╔═╡ 453544fc-0e3e-4e04-8c0c-192f3a038884
-frametitle("Positional encoding")
+# ╔═╡ 97463c54-7cc7-4497-a8a6-6422f5f582bd
+bib(["team2024Gemini", "team2024Geminia", "team2024Gemma", "team2024Gemmaa", "sennrich2016Neural", "radford2019Language", "brown2020Language", "touvron2023Llama", "yu2023MEGABYTE"])
 
-# ╔═╡ 92e01e21-ca77-43fc-9bf8-0c5a7aaed1bb
-frametitle("Residual connection")
+# ╔═╡ eb18303f-3dfb-4b87-90f2-f6dc542d7221
+bib(["press2017Using", "vaswani2017Attentiona"])
+
+# ╔═╡ 76e2f97b-1c06-40cd-b134-d5155aa5587d
+bib(["bengio2000Neural"])
+
+# ╔═╡ 75ca478c-916f-464a-9435-8208ee726d50
+bib(["team2024Gemma", "team2024Gemmaa", "radford2019Language", "touvron2023Llama"])
+
+# ╔═╡ 5b4a67a9-e33e-4dc6-b9f0-fd9a2cca6f2a
+bib(["mikolov2010Recurrent", "goodfellow2016Deep"])
+
+# ╔═╡ 8eafcfed-9771-4d99-b0c5-bd75a6dab012
+bib(["cho2014Properties", "graves2014Generating", "goodfellow2016Deep", "gu2024Mamba", "wang2024MambaByte"])
+
+# ╔═╡ e41d13ca-1dc1-45ae-9fa6-a83c4101120d
+bib(["bahdanau2016Neural"])
+
+# ╔═╡ c032b3ff-c539-4e38-81d0-39b28b3a8076
+bib(["bahdanau2016Neural", "vaswani2017Attentiona"])
 
 # ╔═╡ b56e9e56-e74a-401b-b4b5-f36bb33341d5
 bib(["he2015Deep"])
 
-# ╔═╡ f2cba2aa-c541-4692-a441-e65741750a15
-frametitle("Layer normalization")
-
 # ╔═╡ 2a8433e3-9a3b-487b-abf3-09278ea42389
 bib(["ioffe2015Batch", "ba2016Layer", "vaswani2017Attentiona"])
 
-# ╔═╡ e383bb72-49a1-4df1-84c3-b95a2ffe00f5
-frametitle("Feed-Forward network")
-
-# ╔═╡ 79e6c4a8-cc1e-40cc-bb09-e9a7a9a8e475
-frametitle("Transformer variations")
-
 # ╔═╡ 4dd7083a-e730-4f4b-bde8-fc1a5b08ebfc
 bib(["he2016Identity", "radford2019Language", "su2023RoFormer"])
-
-# ╔═╡ a5b20939-9afa-48c0-aa67-cbca6bc99804
-frametitle("Cost of LLMs")
-
-# ╔═╡ 8d6ec2b3-997e-4df5-a3b2-c1dffa53d0ec
-md"Homework for next week : What is the inference cost of LLMs with respect to ``d_\text{emb}``, ``n_\text{voc}``, ``n_\text{ctx}``, ``d_\text{ff}``, ``h`` and ``N`` ?"
-
-# ╔═╡ f572e113-b36b-4a6b-96c7-c26f100e1ad4
-md"## Utils"
-
-# ╔═╡ f6f7376e-9984-4289-b8ff-9d47e5358791
-import Bibliography, CSV
-
-# ╔═╡ 37e0d84b-5f1b-470a-a0d7-2ace5565ebc1
-Biblio.load!()
 
 # ╔═╡ 85a10748-8d19-44a8-a1c5-0d13b093f1bf
 function draw_transformer()
@@ -728,19 +734,20 @@ push!(d, ["a", "d"])
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-Bibliography = "f1be7e48-bf82-45af-a471-ae754a193061"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 Luxor = "ae8d54c2-7ccd-5906-9d76-62fc9837b5bc"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 
 [compat]
-Bibliography = "~0.2.20"
-CSV = "~0.10.14"
+CSV = "~0.10.15"
 DataFrames = "~1.7.0"
-Luxor = "~4.0.0"
+DocumenterCitations = "~1.3.5"
+Luxor = "~4.1.0"
 PlutoUI = "~0.7.60"
 PrettyTables = "~2.4.0"
 """
@@ -751,13 +758,23 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "01a6907b8e4b5a5da93c1d358903fef117f351e9"
+project_hash = "21e026758607d3f40a6e2f2b741db37409af8047"
+
+[[deps.ANSIColoredPrinters]]
+git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
+uuid = "a4c015fc-c6ff-483c-b24f-f7ea428134e9"
+version = "0.0.1"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
 git-tree-sha1 = "6e1d2a35f2f90a4bc7c2ed98079b2ba09c35b83a"
 uuid = "6e696c72-6542-2067-7265-42206c756150"
 version = "1.3.2"
+
+[[deps.AbstractTrees]]
+git-tree-sha1 = "2d9c9a55f9c93e8887ad391fbae72f8ef55e1177"
+uuid = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
+version = "0.4.5"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -772,15 +789,16 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 version = "1.11.0"
 
 [[deps.BibInternal]]
-git-tree-sha1 = "78aa378482bf6f338eef8f2440fb62a75ab1aaa3"
+deps = ["TestItems"]
+git-tree-sha1 = "b3107800faf461eca3281f89f8d768f4b3e99969"
 uuid = "2027ae74-3657-4b95-ae00-e2f7d55c3e64"
-version = "0.3.6"
+version = "0.3.7"
 
 [[deps.BibParser]]
-deps = ["BibInternal", "DataStructures", "Dates", "JSONSchema", "YAML"]
-git-tree-sha1 = "f24884311dceb5f8eafe11809b6f1d867b489a46"
+deps = ["BibInternal", "DataStructures", "Dates", "JSONSchema", "TestItems", "YAML"]
+git-tree-sha1 = "33478bed83bd124ea8ecd9161b3918fb4c70e529"
 uuid = "13533e5b-e1c2-4e57-8cef-cac5e52f6474"
-version = "0.2.1"
+version = "0.2.2"
 
 [[deps.Bibliography]]
 deps = ["BibInternal", "BibParser", "DataStructures", "Dates", "FileIO", "YAML"]
@@ -796,15 +814,15 @@ version = "1.0.8+2"
 
 [[deps.CSV]]
 deps = ["CodecZlib", "Dates", "FilePathsBase", "InlineStrings", "Mmap", "Parsers", "PooledArrays", "PrecompileTools", "SentinelArrays", "Tables", "Unicode", "WeakRefStrings", "WorkerUtilities"]
-git-tree-sha1 = "6c834533dc1fabd820c1db03c839bf97e45a3fab"
+git-tree-sha1 = "deddd8725e5e1cc49ee205a1964256043720a6c3"
 uuid = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
-version = "0.10.14"
+version = "0.10.15"
 
 [[deps.Cairo]]
 deps = ["Cairo_jll", "Colors", "Glib_jll", "Graphics", "Libdl", "Pango_jll"]
-git-tree-sha1 = "d0b3f8b4ad16cb0a2988c6788646a5e6a17b6b1b"
+git-tree-sha1 = "71aa551c5c33f1a4415867fe06b7844faadb0ae9"
 uuid = "159f3aea-2a34-519c-b102-8c37f9878175"
-version = "1.0.5"
+version = "1.1.1"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
@@ -877,6 +895,24 @@ deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 version = "1.11.0"
 
+[[deps.DocStringExtensions]]
+deps = ["LibGit2"]
+git-tree-sha1 = "2fb1e02f2b635d0845df5d7c167fec4dd739b00d"
+uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+version = "0.9.3"
+
+[[deps.Documenter]]
+deps = ["ANSIColoredPrinters", "AbstractTrees", "Base64", "CodecZlib", "Dates", "DocStringExtensions", "Downloads", "Git", "IOCapture", "InteractiveUtils", "JSON", "LibGit2", "Logging", "Markdown", "MarkdownAST", "Pkg", "PrecompileTools", "REPL", "RegistryInstances", "SHA", "TOML", "Test", "Unicode"]
+git-tree-sha1 = "d0ea2c044963ed6f37703cead7e29f70cba13d7e"
+uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+version = "1.8.0"
+
+[[deps.DocumenterCitations]]
+deps = ["AbstractTrees", "Bibliography", "Dates", "Documenter", "Logging", "Markdown", "MarkdownAST", "OrderedCollections", "Unicode"]
+git-tree-sha1 = "5a72f3f804deb1431cb79f5636163e4fdf8ed8ed"
+uuid = "daee34ce-89f3-4625-b898-19384cb65244"
+version = "1.3.5"
+
 [[deps.Downloads]]
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
@@ -902,9 +938,9 @@ version = "4.4.4+1"
 
 [[deps.FileIO]]
 deps = ["Pkg", "Requires", "UUIDs"]
-git-tree-sha1 = "62ca0547a14c57e98154423419d8a342dca75ca9"
+git-tree-sha1 = "91e0e5c68d02bcdaae76d3c8ceb4361e8f28d2e9"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-version = "1.16.4"
+version = "1.16.5"
 
 [[deps.FilePathsBase]]
 deps = ["Compat", "Dates"]
@@ -956,6 +992,18 @@ git-tree-sha1 = "9b02998aba7bf074d14de89f9d37ca24a1a0b046"
 uuid = "78b55507-aeef-58d4-861c-77aaff3498b1"
 version = "0.21.0+0"
 
+[[deps.Git]]
+deps = ["Git_jll"]
+git-tree-sha1 = "04eff47b1354d702c3a85e8ab23d539bb7d5957e"
+uuid = "d7ba0133-e1db-5d97-8f8c-041e4b3a1eb2"
+version = "1.3.1"
+
+[[deps.Git_jll]]
+deps = ["Artifacts", "Expat_jll", "JLLWrappers", "LibCURL_jll", "Libdl", "Libiconv_jll", "OpenSSL_jll", "PCRE2_jll", "Zlib_jll"]
+git-tree-sha1 = "ea372033d09e4552a04fd38361cd019f9003f4f4"
+uuid = "f8c6e375-362e-5223-8a59-34ff63f689eb"
+version = "2.46.2+0"
+
 [[deps.Glib_jll]]
 deps = ["Artifacts", "Gettext_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Libiconv_jll", "Libmount_jll", "PCRE2_jll", "Zlib_jll"]
 git-tree-sha1 = "674ff0db93fffcd11a3573986e550d66cd4fd71f"
@@ -964,9 +1012,9 @@ version = "2.80.5+0"
 
 [[deps.Graphics]]
 deps = ["Colors", "LinearAlgebra", "NaNMath"]
-git-tree-sha1 = "d61890399bc535850c4bf08e4e0d3a7ad0f21cbd"
+git-tree-sha1 = "a641238db938fff9b2f60d08ed9030387daf428c"
 uuid = "a2bd30eb-e257-5431-a919-1863eab51364"
-version = "1.1.2"
+version = "1.1.3"
 
 [[deps.Graphite2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1040,9 +1088,9 @@ version = "0.21.4"
 
 [[deps.JSON3]]
 deps = ["Dates", "Mmap", "Parsers", "PrecompileTools", "StructTypes", "UUIDs"]
-git-tree-sha1 = "eb3edce0ed4fa32f75a0a11217433c31d56bd48b"
+git-tree-sha1 = "1d322381ef7b087548321d3f878cb4c9bd8f8f9b"
 uuid = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
-version = "1.14.0"
+version = "1.14.1"
 
     [deps.JSON3.extensions]
     JSON3ArrowExt = ["ArrowTypes"]
@@ -1090,6 +1138,11 @@ version = "2.10.2+1"
 git-tree-sha1 = "dda21b8cbd6a6c40d9d02a73230f9d70fed6918c"
 uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 version = "1.4.0"
+
+[[deps.LazilyInitializedFields]]
+git-tree-sha1 = "0f2da712350b020bc3957f269c9caad516383ee0"
+uuid = "0e77f7df-68c5-4e49-93ce-4cd80f5598bf"
+version = "1.3.0"
 
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
@@ -1140,9 +1193,9 @@ version = "1.50.0+0"
 
 [[deps.Libiconv_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "f9557a255370125b405568f9767d6d195822a175"
+git-tree-sha1 = "61dfdba58e585066d8bce214c5a51eaa0539f269"
 uuid = "94ce4f54-9a6c-5748-9c1c-f9c7231a4531"
-version = "1.17.0+0"
+version = "1.17.0+1"
 
 [[deps.Libmount_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1179,9 +1232,9 @@ version = "1.11.0"
 
 [[deps.Luxor]]
 deps = ["Base64", "Cairo", "Colors", "DataStructures", "Dates", "FFMPEG", "FileIO", "PolygonAlgorithms", "PrecompileTools", "Random", "Rsvg"]
-git-tree-sha1 = "97e13acec42f02139fcf1b2035010d5e3369d070"
+git-tree-sha1 = "134570038473304d709de27384621bd0810d23fa"
 uuid = "ae8d54c2-7ccd-5906-9d76-62fc9837b5bc"
-version = "4.0.0"
+version = "4.1.0"
 
     [deps.Luxor.extensions]
     LuxorExtLatex = ["LaTeXStrings", "MathTeXEngine"]
@@ -1199,6 +1252,12 @@ version = "0.1.4"
 deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 version = "1.11.0"
+
+[[deps.MarkdownAST]]
+deps = ["AbstractTrees", "Markdown"]
+git-tree-sha1 = "465a70f0fc7d443a00dcdc3267a497397b8a3899"
+uuid = "d0879d2d-cac2-40c8-9cee-1863dc0c7391"
+version = "0.1.2"
 
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -1289,12 +1348,10 @@ version = "0.43.4+0"
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "Random", "SHA", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 version = "1.11.0"
+weakdeps = ["REPL"]
 
     [deps.Pkg.extensions]
     REPLExt = "REPL"
-
-    [deps.Pkg.weakdeps]
-    REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
@@ -1336,6 +1393,11 @@ deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 version = "1.11.0"
 
+[[deps.REPL]]
+deps = ["InteractiveUtils", "Markdown", "Sockets", "StyledStrings", "Unicode"]
+uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+version = "1.11.0"
+
 [[deps.Random]]
 deps = ["SHA"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -1345,6 +1407,12 @@ version = "1.11.0"
 git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
 uuid = "189a3867-3050-52da-a836-e630ba90ab69"
 version = "1.2.2"
+
+[[deps.RegistryInstances]]
+deps = ["LazilyInitializedFields", "Pkg", "TOML", "Tar"]
+git-tree-sha1 = "ffd19052caf598b8653b99404058fce14828be51"
+uuid = "2792f1a3-b283-48e8-9a74-f99dce5104f3"
+version = "0.1.0"
 
 [[deps.Requires]]
 deps = ["UUIDs"]
@@ -1370,6 +1438,10 @@ version = "1.4.7"
 
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+version = "1.11.0"
+
+[[deps.Sockets]]
+uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 version = "1.11.0"
 
 [[deps.SortingAlgorithms]]
@@ -1408,6 +1480,10 @@ git-tree-sha1 = "159331b30e94d7b11379037feeb9b690950cace8"
 uuid = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
 version = "1.11.0"
 
+[[deps.StyledStrings]]
+uuid = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
+version = "1.11.0"
+
 [[deps.TOML]]
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
@@ -1434,6 +1510,11 @@ version = "1.10.0"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 version = "1.11.0"
+
+[[deps.TestItems]]
+git-tree-sha1 = "42fd9023fef18b9b78c8343a4e2f3813ffbcefcb"
+uuid = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
+version = "1.0.0"
 
 [[deps.TranscodingStreams]]
 git-tree-sha1 = "0c45878dcfdcfa8480052b6ab162cdd138781742"
@@ -1700,8 +1781,10 @@ version = "3.5.0+0"
 # ╟─f572e113-b36b-4a6b-96c7-c26f100e1ad4
 # ╠═32621224-a782-4bf6-9570-562cf2bb7360
 # ╠═f6f7376e-9984-4289-b8ff-9d47e5358791
-# ╠═37e0d84b-5f1b-470a-a0d7-2ace5565ebc1
 # ╠═6f72e8a5-819d-474c-a725-7f7318d964d7
+# ╠═1d5b1b7c-828c-4a16-b446-cff21b015d45
+# ╠═94ae440d-0644-49db-9461-f1a1ff1d7f87
+# ╠═4f1d5112-dbac-4eb6-8518-0dc4193c3f8e
 # ╠═85a10748-8d19-44a8-a1c5-0d13b093f1bf
 # ╠═a873f760-bfc1-489f-a58e-75e12afa54f2
 # ╠═d050a7ee-3aa7-4539-a236-5b6446599ded
