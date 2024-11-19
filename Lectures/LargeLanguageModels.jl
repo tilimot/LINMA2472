@@ -5,7 +5,7 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ 32621224-a782-4bf6-9570-562cf2bb7360
-using PlutoUI, DataFrames, PrettyTables, LinearAlgebra, Luxor
+using PlutoUI, DataFrames, PrettyTables, LinearAlgebra, Luxor, LaTeXStrings, MathTeXEngine
 
 # ╔═╡ 6f72e8a5-819d-474c-a725-7f7318d964d7
 include("utils.jl")
@@ -290,7 +290,38 @@ frametitle("Transformer variations")
 frametitle("Cost of LLMs")
 
 # ╔═╡ 8d6ec2b3-997e-4df5-a3b2-c1dffa53d0ec
-md"Homework for next week : What is the inference cost of LLMs with respect to ``d_\text{emb}``, ``n_\text{voc}``, ``n_\text{ctx}``, ``d_\text{ff}``, ``h`` and ``N`` ?"
+qa(
+	md"What is the time complexity of a transformer with respect to ``d_\text{emb}``, ``n_\text{voc}``, ``n_\text{ctx}``, ``d_\text{ff}``, ``h`` and ``N`` ?",
+md"""
+| Input | Parameters | Time |
+|-------|------------|------|
+| ``CX + P \in \mathbb{R}^{d_\text{emb} \times n_\text{ctx}}`` | ``W_j^V \in \mathbb{R}^{d_v \times d_\text{emb}}`` | ``O(d_v d_\text{emb} n_\text{ctx})`` |
+| ``CX + P \in \mathbb{R}^{d_\text{emb} \times n_\text{ctx}}`` | ``W_j^K, W_j^Q \in \mathbb{R}^{d_k \times d_\text{emb}}`` | ``O(d_k d_\text{emb} n_\text{ctx})`` |
+| ``K, Q \in \mathbb{R}^{d_k \times n_\text{ctx}}`` |  | ``O(d_k n_\text{ctx}^2)`` |
+| ``V \in \mathbb{R}^{d_v \times n_\text{ctx}}, \text{softmax}(...) \in \mathbb{R}^{n_\text{ctx} \times n_\text{ctx}}`` |  | ``O(d_v n_\text{ctx}^2)`` |
+| ``... \in \mathbb{R}^{d_v \times n_\text{ctx}}`` | ``W^O \in \mathbb{R}^{d_\text{emb} \times d_v}`` | ``O(d_\text{emb} d_v n_\text{ctx})`` |
+| ``... \in \mathbb{R}^{d_\text{emb} \times n_\text{ctx}}`` | ``W_1 \in \mathbb{R}^{d_\text{ff} \times d_\text{emb}}`` | ``O(d_\text{emb} d_\text{ff} n_\text{ctx})`` |
+| ``... \in \mathbb{R}^{d_\text{ff} \times n_\text{ctx}}`` | ``W_1 \in \mathbb{R}^{d_\text{emb} \times d_\text{ff}}`` | ``O(d_\text{emb} d_\text{ff} n_\text{ctx})`` |
+
+So for ``N`` layers (ignoring the complexity of the embedding):
+```math
+O(Nn_\text{ctx}(n_\text{ctx}(d_v + d_k) + d_\text{emb}(d_v+d_k+d_\text{ff})))
+```
+Assuming that ``d_v, d_k, d_\text{ff}`` has the same scale as ``d_\text{emb}``:
+```math
+O(Nn_\text{ctx}^2d_\text{emb} + Nn_\text{ctx}d_\text{emb}^2)
+```
+"""
+)
+
+# ╔═╡ 04e9b912-6712-4290-acc4-f24bb27a1469
+frametitle("Machine translation")
+
+# ╔═╡ 8b78360a-21cb-4574-a84d-46ea4d0cedb1
+img("sutskever2014Sequence")
+
+# ╔═╡ 6bff7bca-ea1d-44c6-b8c3-040250f90654
+frametitle("Cross-Attention")
 
 # ╔═╡ f572e113-b36b-4a6b-96c7-c26f100e1ad4
 md"## Utils"
@@ -427,6 +458,22 @@ Similarly, in the masked case:
 	[70, 30],
 )
 
+# ╔═╡ 25b79953-fd7c-46c1-b760-d57c09910981
+qa(md"""
+How does the number of parameters of transformers compare with $(cite("bengio2000Neural")) or RNNs for large ``n_\text{ctx}`` ?
+""",
+md"""
+* The number of parameters of the transformer does **not** depend on ``n_\text{ctx}``.
+* The number of parameters of $(cite("bengio2000Neural")) depends linearly with ``n_\text{ctx}``. Assuming that the number of hidden neurons scales proportionally with ``n_\text{ctx}``, the number of parameters even scales quadratically with ``n_\text{ctx}``!
+* For RNNs, if the dimension of the internal state scales proportionally with ``n_\text{ctx}``, the number of parameters is also proportional with ``n_\text{ctx}``! If the dimension of the internal state is kept too small, increasing the context won't be so helpful, due to *encoder bottleneck*, see next slide.
+""")
+
+# ╔═╡ c1437dcc-22cb-424f-9b8e-326172f82d86
+md"""
+* LSTM **encoder** → **context** → LSTM **decoder** $(cite("sutskever2014Sequence")). See $(cite("sutskever2014Sequence", "Figure 1")) below.
+* Issue with *encoder bottleneck*. All information has to be summarized in the **context**.
+"""
+
 # ╔═╡ 4f1d5112-dbac-4eb6-8518-0dc4193c3f8e
 bib(args...) = bibrefs(biblio, args...)
 
@@ -469,18 +516,26 @@ bib(["ioffe2015Batch", "ba2016Layer", "vaswani2017Attentiona"])
 # ╔═╡ 4dd7083a-e730-4f4b-bde8-fc1a5b08ebfc
 bib(["he2016Identity", "radford2019Language", "su2023RoFormer"])
 
+# ╔═╡ 45efc71d-d5f8-474e-9b89-e72fac7110fd
+bib("bengio2000Neural")
+
+# ╔═╡ f7ca738d-5215-4e91-a2f3-a5ff10911313
+bib("sutskever2014Sequence")
+
 # ╔═╡ 85a10748-8d19-44a8-a1c5-0d13b093f1bf
-function draw_transformer()
+function draw_transformer(decoder_only = true)
 	scale(0.4, 0.4)
 	Luxor.placeimage(readpng("images/transformer.png"), centered = true)
-	sethue("red")
-	setopacity(0.4)
-	box(Point(-350, -160), Point(320, 20), :fill)
-	box(Point(-350, 20), Point(0, 460), :fill)
-	translate(Point(-170, -190))
-	setopacity(1)
-	fontsize(32)
-	text("Not used for now", halign = :center)
+	if decoder_only
+		sethue("red")
+		setopacity(0.4)
+		box(Point(-350, -160), Point(320, 20), :fill)
+		box(Point(-350, 20), Point(0, 460), :fill)
+		translate(Point(-170, -190))
+		setopacity(1)
+		fontsize(32)
+		text("Not used for now", halign = :center)
+	end
 end
 
 # ╔═╡ d1ba8da3-add8-4dbe-9ebf-9a32fa5cd5dd
@@ -590,6 +645,37 @@ HTML(html(@draw begin
 	highlight(290, -85, 360, -45)
 	highlight(290, 210, 360, 250)
 end 300 400))
+)
+
+# ╔═╡ 3d8add97-59e1-444a-838b-85c2a2ac60b3
+HAlign(
+md"""
+*Cross-Attention* between
+* values and keys ``E(CX + P)`` where ``E`` is the encoder, and ``X`` is the matrix of input token
+* query ``Q`` depending on past output ``Y`` and number of layers already applied
+```math
+\text{MultiHead}(E(CX + P), E(CX + P), Q)
+```
+
+The embedding vectors ``CX`` take then different projections
+for value, key, query and also for different heads!
+```math
+\begin{multline}
+\text{head}_j = \text{Attention}(W_j^VV, W_j^KK, W_j^QQ)\\
+\text{where } V = K = E(CX + P)
+\end{multline}
+```
+""",
+HTML(html(@draw begin
+	draw_transformer(false)
+	highlight(31, -97, 205, 5)
+	#sethue("red")
+	#setopacity(1)
+	fontsize(32)
+	text("CX + P", Point(-60, 252), halign = :center)
+	text("CY + P", Point(65, 252), halign = :center)
+	text(L"E(CX + P)", Point(-70, -160), halign = :center)
+end 300 400)),
 )
 
 # ╔═╡ d050a7ee-3aa7-4539-a236-5b6446599ded
@@ -746,9 +832,11 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 Luxor = "ae8d54c2-7ccd-5906-9d76-62fc9837b5bc"
+MathTeXEngine = "0a4f8689-d25c-4efe-a92b-7142dfc1aa53"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 
@@ -756,7 +844,9 @@ PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 CSV = "~0.10.15"
 DataFrames = "~1.7.0"
 DocumenterCitations = "~1.3.5"
+LaTeXStrings = "~1.4.0"
 Luxor = "~4.1.0"
+MathTeXEngine = "~0.6.1"
 PlutoUI = "~0.7.60"
 PrettyTables = "~2.4.0"
 """
@@ -767,7 +857,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "21e026758607d3f40a6e2f2b741db37409af8047"
+project_hash = "174c71434e9f26a086422d879d9ed7fa3081c082"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -792,6 +882,12 @@ version = "1.1.2"
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 version = "1.11.0"
+
+[[deps.Automa]]
+deps = ["PrecompileTools", "TranscodingStreams"]
+git-tree-sha1 = "014bc22d6c400a7703c0f5dc1fdc302440cf88be"
+uuid = "67c07d97-cdcb-5c2c-af73-a7f9c32a568b"
+version = "1.0.4"
 
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -820,6 +916,11 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "8873e196c2eb87962a2048b3b8e08946535864a1"
 uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
 version = "1.0.8+2"
+
+[[deps.CEnum]]
+git-tree-sha1 = "389ad5c84de1ae7cf0e28e381131c98ea87d54fc"
+uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
+version = "0.5.0"
 
 [[deps.CSV]]
 deps = ["CodecZlib", "Dates", "FilePathsBase", "InlineStrings", "Mmap", "Parsers", "PooledArrays", "PrecompileTools", "SentinelArrays", "Tables", "Unicode", "WeakRefStrings", "WorkerUtilities"]
@@ -851,6 +952,18 @@ git-tree-sha1 = "b10d0b65641d57b8b4d5e234446582de5047050d"
 uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
 version = "0.11.5"
 
+[[deps.ColorVectorSpace]]
+deps = ["ColorTypes", "FixedPointNumbers", "LinearAlgebra", "Requires", "Statistics", "TensorCore"]
+git-tree-sha1 = "a1f44953f2382ebb937d60dafbe2deea4bd23249"
+uuid = "c3611d14-8923-5661-9e6a-0046d554d3a4"
+version = "0.10.0"
+
+    [deps.ColorVectorSpace.extensions]
+    SpecialFunctionsExt = "SpecialFunctions"
+
+    [deps.ColorVectorSpace.weakdeps]
+    SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+
 [[deps.Colors]]
 deps = ["ColorTypes", "FixedPointNumbers", "Reexport"]
 git-tree-sha1 = "362a287c3aa50601b0bc359053d5c2468f0e7ce0"
@@ -871,6 +984,21 @@ weakdeps = ["Dates", "LinearAlgebra"]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 version = "1.1.1+0"
+
+[[deps.ConstructionBase]]
+git-tree-sha1 = "76219f1ed5771adbb096743bff43fb5fdd4c1157"
+uuid = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
+version = "1.5.8"
+
+    [deps.ConstructionBase.extensions]
+    ConstructionBaseIntervalSetsExt = "IntervalSets"
+    ConstructionBaseLinearAlgebraExt = "LinearAlgebra"
+    ConstructionBaseStaticArraysExt = "StaticArrays"
+
+    [deps.ConstructionBase.weakdeps]
+    IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
+    LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+    StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [[deps.Crayons]]
 git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
@@ -927,11 +1055,22 @@ deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 version = "1.6.0"
 
+[[deps.EarCut_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "e3290f2d49e661fbd94046d7e3726ffcb2d41053"
+uuid = "5ae413db-bbd1-5e63-b57d-d24a61df00f5"
+version = "2.2.4+0"
+
 [[deps.Expat_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "1c6317308b9dc757616f0b5cb379db10494443a7"
 uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
 version = "2.6.2+0"
+
+[[deps.Extents]]
+git-tree-sha1 = "81023caa0021a41712685887db1fc03db26f41f5"
+uuid = "411431e0-e8b7-467b-b5e0-f676ba4f2910"
+version = "0.1.4"
 
 [[deps.FFMPEG]]
 deps = ["FFMPEG_jll"]
@@ -978,11 +1117,23 @@ git-tree-sha1 = "db16beca600632c95fc8aca29890d83788dd8b23"
 uuid = "a3f928ae-7b40-5064-980b-68af3947d34b"
 version = "2.13.96+0"
 
+[[deps.FreeType]]
+deps = ["CEnum", "FreeType2_jll"]
+git-tree-sha1 = "907369da0f8e80728ab49c1c7e09327bf0d6d999"
+uuid = "b38be410-82b0-50bf-ab77-7b57e271db43"
+version = "4.1.1"
+
 [[deps.FreeType2_jll]]
 deps = ["Artifacts", "Bzip2_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
 git-tree-sha1 = "5c1d8ae0efc6c2e7b1fc502cbe25def8f661b7bc"
 uuid = "d7e528f0-a631-5988-bf34-fe36492bcfd7"
 version = "2.13.2+0"
+
+[[deps.FreeTypeAbstraction]]
+deps = ["ColorVectorSpace", "Colors", "FreeType", "GeometryBasics"]
+git-tree-sha1 = "2493cdfd0740015955a8e46de4ef28f49460d8bc"
+uuid = "663a7486-cb36-511b-a19d-713bb74d65c9"
+version = "0.10.3"
 
 [[deps.FriBidi_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -994,6 +1145,23 @@ version = "1.0.14+0"
 deps = ["Random"]
 uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 version = "1.11.0"
+
+[[deps.GeoFormatTypes]]
+git-tree-sha1 = "59107c179a586f0fe667024c5eb7033e81333271"
+uuid = "68eda718-8dee-11e9-39e7-89f7f65f511f"
+version = "0.4.2"
+
+[[deps.GeoInterface]]
+deps = ["Extents", "GeoFormatTypes"]
+git-tree-sha1 = "826b4fd69438d9ce4d2b19de6bc2f970f45f0f88"
+uuid = "cf35fbd7-0cd7-5166-be24-54bfbe79505f"
+version = "1.3.8"
+
+[[deps.GeometryBasics]]
+deps = ["EarCut_jll", "Extents", "GeoInterface", "IterTools", "LinearAlgebra", "StaticArrays", "StructArrays", "Tables"]
+git-tree-sha1 = "b62f2b2d76cee0d61a2ef2b3118cd2a3215d3134"
+uuid = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
+version = "0.4.11"
 
 [[deps.Gettext_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Libiconv_jll", "Pkg", "XML2_jll"]
@@ -1077,6 +1245,11 @@ version = "1.11.0"
 git-tree-sha1 = "0dc7b50b8d436461be01300fd8cd45aa0274b038"
 uuid = "41ab1584-1d38-5bbf-9106-f11c6c58b48f"
 version = "1.3.0"
+
+[[deps.IterTools]]
+git-tree-sha1 = "42d5f897009e7ff2cf88db414a389e5ed1bdd023"
+uuid = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
+version = "1.10.0"
 
 [[deps.IteratorInterfaceExtensions]]
 git-tree-sha1 = "a3f24677c21f5bbe9d2a714f95dcd58337fb2856"
@@ -1244,13 +1417,10 @@ deps = ["Base64", "Cairo", "Colors", "DataStructures", "Dates", "FFMPEG", "FileI
 git-tree-sha1 = "134570038473304d709de27384621bd0810d23fa"
 uuid = "ae8d54c2-7ccd-5906-9d76-62fc9837b5bc"
 version = "4.1.0"
+weakdeps = ["LaTeXStrings", "MathTeXEngine"]
 
     [deps.Luxor.extensions]
     LuxorExtLatex = ["LaTeXStrings", "MathTeXEngine"]
-
-    [deps.Luxor.weakdeps]
-    LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
-    MathTeXEngine = "0a4f8689-d25c-4efe-a92b-7142dfc1aa53"
 
 [[deps.MIMEs]]
 git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
@@ -1267,6 +1437,12 @@ deps = ["AbstractTrees", "Markdown"]
 git-tree-sha1 = "465a70f0fc7d443a00dcdc3267a497397b8a3899"
 uuid = "d0879d2d-cac2-40c8-9cee-1863dc0c7391"
 version = "0.1.2"
+
+[[deps.MathTeXEngine]]
+deps = ["AbstractTrees", "Automa", "DataStructures", "FreeTypeAbstraction", "GeometryBasics", "LaTeXStrings", "REPL", "RelocatableFolders", "UnicodeFun"]
+git-tree-sha1 = "e1641f32ae592e415e3dbae7f4a188b5316d4b62"
+uuid = "0a4f8689-d25c-4efe-a92b-7142dfc1aa53"
+version = "0.6.1"
 
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -1423,6 +1599,12 @@ git-tree-sha1 = "ffd19052caf598b8653b99404058fce14828be51"
 uuid = "2792f1a3-b283-48e8-9a74-f99dce5104f3"
 version = "0.1.0"
 
+[[deps.RelocatableFolders]]
+deps = ["SHA", "Scratch"]
+git-tree-sha1 = "ffdaf70d81cf6ff22c2b6e733c900c3321cab864"
+uuid = "05181044-ff0b-4ac5-8273-598c1e38db00"
+version = "1.0.1"
+
 [[deps.Requires]]
 deps = ["UUIDs"]
 git-tree-sha1 = "838a3a4188e2ded87a4f9f184b4b0d78a1e91cb7"
@@ -1438,6 +1620,12 @@ version = "1.0.0"
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 version = "0.7.0"
+
+[[deps.Scratch]]
+deps = ["Dates"]
+git-tree-sha1 = "3bac05bc7e74a75fd9cba4295cde4045d9fe2386"
+uuid = "6c6a2e73-6563-6170-7368-637461726353"
+version = "1.2.1"
 
 [[deps.SentinelArrays]]
 deps = ["Dates", "Random"]
@@ -1458,6 +1646,25 @@ deps = ["DataStructures"]
 git-tree-sha1 = "66e0a8e672a0bdfca2c3f5937efb8538b9ddc085"
 uuid = "a2af1166-a08f-5f64-846c-94a0d3cef48c"
 version = "1.2.1"
+
+[[deps.StaticArrays]]
+deps = ["LinearAlgebra", "PrecompileTools", "Random", "StaticArraysCore"]
+git-tree-sha1 = "777657803913ffc7e8cc20f0fd04b634f871af8f"
+uuid = "90137ffa-7385-5640-81b9-e52037218182"
+version = "1.9.8"
+
+    [deps.StaticArrays.extensions]
+    StaticArraysChainRulesCoreExt = "ChainRulesCore"
+    StaticArraysStatisticsExt = "Statistics"
+
+    [deps.StaticArrays.weakdeps]
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[[deps.StaticArraysCore]]
+git-tree-sha1 = "192954ef1208c7019899fbf8049e717f92959682"
+uuid = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
+version = "1.4.3"
 
 [[deps.Statistics]]
 deps = ["LinearAlgebra"]
@@ -1482,6 +1689,24 @@ deps = ["PrecompileTools"]
 git-tree-sha1 = "a6b1675a536c5ad1a60e5a5153e1fee12eb146e3"
 uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
 version = "0.4.0"
+
+[[deps.StructArrays]]
+deps = ["ConstructionBase", "DataAPI", "Tables"]
+git-tree-sha1 = "f4dc295e983502292c4c3f951dbb4e985e35b3be"
+uuid = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
+version = "0.6.18"
+
+    [deps.StructArrays.extensions]
+    StructArraysAdaptExt = "Adapt"
+    StructArraysGPUArraysCoreExt = "GPUArraysCore"
+    StructArraysSparseArraysExt = "SparseArrays"
+    StructArraysStaticArraysExt = "StaticArrays"
+
+    [deps.StructArrays.weakdeps]
+    Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+    GPUArraysCore = "46192b85-c4d5-4398-a991-12ede77f4527"
+    SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+    StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [[deps.StructTypes]]
 deps = ["Dates", "UUIDs"]
@@ -1514,6 +1739,12 @@ version = "1.12.0"
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 version = "1.10.0"
+
+[[deps.TensorCore]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "1feb45f88d133a655e001435632f019a9a1bcdb6"
+uuid = "62fd8b95-f654-4bbd-a8a5-9c27f68ccd50"
+version = "0.1.1"
 
 [[deps.Test]]
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
@@ -1548,6 +1779,12 @@ version = "1.11.0"
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 version = "1.11.0"
+
+[[deps.UnicodeFun]]
+deps = ["REPL"]
+git-tree-sha1 = "53915e50200959667e78a92a418594b428dffddf"
+uuid = "1cfade01-22cf-5700-b092-accc4b62d6e1"
+version = "0.4.1"
 
 [[deps.WeakRefStrings]]
 deps = ["DataAPI", "InlineStrings", "Parsers"]
@@ -1788,7 +2025,15 @@ version = "3.5.0+0"
 # ╟─4dd7083a-e730-4f4b-bde8-fc1a5b08ebfc
 # ╟─a5b20939-9afa-48c0-aa67-cbca6bc99804
 # ╟─8d6ec2b3-997e-4df5-a3b2-c1dffa53d0ec
-# ╟─f572e113-b36b-4a6b-96c7-c26f100e1ad4
+# ╟─25b79953-fd7c-46c1-b760-d57c09910981
+# ╟─45efc71d-d5f8-474e-9b89-e72fac7110fd
+# ╟─04e9b912-6712-4290-acc4-f24bb27a1469
+# ╟─c1437dcc-22cb-424f-9b8e-326172f82d86
+# ╟─8b78360a-21cb-4574-a84d-46ea4d0cedb1
+# ╟─f7ca738d-5215-4e91-a2f3-a5ff10911313
+# ╟─6bff7bca-ea1d-44c6-b8c3-040250f90654
+# ╟─3d8add97-59e1-444a-838b-85c2a2ac60b3
+# ╠═f572e113-b36b-4a6b-96c7-c26f100e1ad4
 # ╠═32621224-a782-4bf6-9570-562cf2bb7360
 # ╠═f6f7376e-9984-4289-b8ff-9d47e5358791
 # ╠═6f72e8a5-819d-474c-a725-7f7318d964d7
