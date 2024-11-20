@@ -30,7 +30,7 @@ qa(md"Proof",
 md"""
 We have
 ```math
-f_Y(y) = \int_x f_X(x) \nabla_y f_\mathcal{E}((y - x)/\sigma) \, \text{d} x
+f_Y(y) = \int_x f_X(x) f_\mathcal{E}((y - x)/\sigma) \, \text{d} x
 ```
 so
 ```math
@@ -38,7 +38,6 @@ so
 \nabla_y f_Y(y)
 & = \int_x f_X(x) \nabla_y f_\mathcal{E}((y - x)/\sigma) \, \text{d} x\\
 & = \int_x f_X(x) \frac{x - y}{\sigma^2} f_\mathcal{E}(y - x) \, \text{d} x\\
-\sigma^2 \nabla_y f_Y(y) & = \int_x f_X(x) \frac{x - y}{\sigma^2} f_\mathcal{E}(y - x) \, \text{d} x - y\\
 \sigma^2 \nabla_y f_Y(y) & = \int_x f_X(x) x f_\mathcal{E}(y - x) \, \text{d} x - y\\
 y + \sigma^2 \nabla_y f_Y(y) & = \mathbb{E}[X | Y = y].
 \end{align}
@@ -50,7 +49,7 @@ HAlign(md"""
 From Tweedie's formula, ``\varepsilon`` is estimated to be
 ``\sigma \nabla_y f_Y(y)``.
 
-*Langevin dynamics*:
+**Sampler** *Langevin dynamics*:
 ```math
 \begin{multline}
 y_{k+1} = y_k + \delta_k \nabla_y f_Y(y_k) + \sqrt{2\delta_k} \epsilon_k\\
@@ -72,7 +71,7 @@ Diffusion models is also known as *energy-based models* and then *score-matching
 
 For **fixed** ``\sigma``, the matching is ``s_\theta(y) \approx \sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)``
 
-**Training**: sample ``x`` / pick ``x`` in dataset, sample ``\varepsilon``, update ``\theta`` to minimize ``\|\varepsilon - s_\theta(y)\|^2``, e.g., using gradient descent.
+**Training**: sample ``x`` / pick ``x`` in dataset, sample ``\varepsilon``, update ``\theta`` to minimize ``\|\varepsilon - s_\theta(y)\|^2``, e.g., using gradient descent. [Image source](https://yang-song.net/blog/2021/score/).
 """
 
 # ╔═╡ 3cdcd14a-9102-4ed4-b186-629ce183b73c
@@ -88,7 +87,7 @@ If ``\sigma`` is too small then ``Y \sim X + \sigma \mathcal{E}`` may not cover 
 \mathbb{E}[\|s_\theta(y) - \sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)\|^2]
 = \int_y f_Y(y) \|s_\theta(y) - \sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)\|^2 \,\text{d}y
 ```
-so it is inaccurate for ``y`` such that ``f_Y(y)`` is too small.
+so it is inaccurate for ``y`` such that ``f_Y(y)`` is too small. [Image source](https://yang-song.net/blog/2021/score/).
 """
 
 # ╔═╡ d826a144-2c79-4c1e-ae3f-c11a4b5353d4
@@ -99,7 +98,7 @@ frametitle("Issue with large variance")
 
 # ╔═╡ e33b16ec-4526-4dbe-affa-3e68aa508ab8
 md"""
-If ``\sigma`` is too large then ``s_\theta(y) \approx \sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)`` everywhere but the distribution ``Y \sim X + \sigma \mathcal{E}`` is too noisy, less specific to ``X`` (small signal to noise ratio).
+If ``\sigma`` is too large then ``s_\theta(y) \approx \sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)`` everywhere but the distribution ``Y \sim X + \sigma \mathcal{E}`` is too noisy, less specific to ``X`` (small signal to noise ratio). [Image source](https://yang-song.net/blog/2021/score/).
 """
 
 # ╔═╡ 06e194ec-42dc-46aa-8935-86c4ed04b7c8
@@ -114,7 +113,7 @@ The matching is ``s_\theta(y\textcolor{red}{, \sigma}) \approx \sigma \nabla_y f
 
 **Training**: sample ``x`` / pick ``x`` in dataset, sample ``\textcolor{red}{\sigma, }\varepsilon``, update ``\theta`` to minimize ``\|\varepsilon - s_\theta(y\textcolor{red}{, \sigma})\|^2``, e.g., using gradient descent.
 
-Animation generated with [`smalldiffusion`](https://github.com/yuanchenyang/smalldiffusion).
+Animation generated with [`smalldiffusion`](https://github.com/yuanchenyang/smalldiffusion) using a deterministic (i.e. ``\epsilon_k=0``) sampler.
 
 Use decreasing ``\sigma_k`` and ``s_\theta(y, \sigma_k)`` in
 ```math
@@ -126,6 +125,12 @@ y_{k+1} = y_k + \delta_k \nabla_y f_Y(y_k) + \sqrt{2\delta_k} \epsilon_k\\
 """,
 img("spiral.gif"),
 )
+
+# ╔═╡ ca68ba1d-5f02-4f80-8cd1-d0c297f19f58
+frametitle("Conditionned diffusion")
+
+# ╔═╡ b94dd60a-2116-43ce-a5c3-5f1ff24479c0
+img("stable_diffusion")
 
 # ╔═╡ 2a0f227f-28b4-419e-9f82-f8bd13fca8c0
 section("Utils")
@@ -139,8 +144,14 @@ biblio = load_biblio!()
 # ╔═╡ d077a471-6b43-41df-8218-e3b4a7e38550
 cite(args...) = bibcite(biblio, args...)
 
+# ╔═╡ e0ba3b61-a618-49ce-9466-e6a8f674bd53
+md"""Source : $(cite("rombach2022HighResolution", "Figure 3"))"""
+
 # ╔═╡ c1fe952e-c074-49c1-91a4-0de76d235f25
 refs(args...) = bibrefs(biblio, args...)
+
+# ╔═╡ e728cc9a-c17f-4143-9e0e-12c03a965bec
+refs("rombach2022HighResolution")
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1277,6 +1288,10 @@ version = "3.5.0+0"
 # ╟─06e194ec-42dc-46aa-8935-86c4ed04b7c8
 # ╟─a7435857-1526-4155-b934-4c4cda9f6b30
 # ╟─c3af23f7-8919-4e27-a97e-6013038b8d8c
+# ╟─ca68ba1d-5f02-4f80-8cd1-d0c297f19f58
+# ╟─b94dd60a-2116-43ce-a5c3-5f1ff24479c0
+# ╟─e0ba3b61-a618-49ce-9466-e6a8f674bd53
+# ╟─e728cc9a-c17f-4143-9e0e-12c03a965bec
 # ╟─2a0f227f-28b4-419e-9f82-f8bd13fca8c0
 # ╠═3fde5f41-32a9-4585-9b6a-131173947346
 # ╠═4b272be9-6881-41e8-9168-3fe471527aa8

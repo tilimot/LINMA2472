@@ -289,31 +289,6 @@ frametitle("Transformer variations")
 # ╔═╡ a5b20939-9afa-48c0-aa67-cbca6bc99804
 frametitle("Cost of LLMs")
 
-# ╔═╡ 8d6ec2b3-997e-4df5-a3b2-c1dffa53d0ec
-qa(
-	md"What is the time complexity of a transformer with respect to ``d_\text{emb}``, ``n_\text{voc}``, ``n_\text{ctx}``, ``d_\text{ff}``, ``h`` and ``N`` ?",
-md"""
-| Input | Parameters | Time |
-|-------|------------|------|
-| ``CX + P \in \mathbb{R}^{d_\text{emb} \times n_\text{ctx}}`` | ``W_j^V \in \mathbb{R}^{d_v \times d_\text{emb}}`` | ``O(d_v d_\text{emb} n_\text{ctx})`` |
-| ``CX + P \in \mathbb{R}^{d_\text{emb} \times n_\text{ctx}}`` | ``W_j^K, W_j^Q \in \mathbb{R}^{d_k \times d_\text{emb}}`` | ``O(d_k d_\text{emb} n_\text{ctx})`` |
-| ``K, Q \in \mathbb{R}^{d_k \times n_\text{ctx}}`` |  | ``O(d_k n_\text{ctx}^2)`` |
-| ``V \in \mathbb{R}^{d_v \times n_\text{ctx}}, \text{softmax}(...) \in \mathbb{R}^{n_\text{ctx} \times n_\text{ctx}}`` |  | ``O(d_v n_\text{ctx}^2)`` |
-| ``... \in \mathbb{R}^{d_v \times n_\text{ctx}}`` | ``W^O \in \mathbb{R}^{d_\text{emb} \times d_v}`` | ``O(d_\text{emb} d_v n_\text{ctx})`` |
-| ``... \in \mathbb{R}^{d_\text{emb} \times n_\text{ctx}}`` | ``W_1 \in \mathbb{R}^{d_\text{ff} \times d_\text{emb}}`` | ``O(d_\text{emb} d_\text{ff} n_\text{ctx})`` |
-| ``... \in \mathbb{R}^{d_\text{ff} \times n_\text{ctx}}`` | ``W_1 \in \mathbb{R}^{d_\text{emb} \times d_\text{ff}}`` | ``O(d_\text{emb} d_\text{ff} n_\text{ctx})`` |
-
-So for ``N`` layers (ignoring the complexity of the embedding):
-```math
-O(Nn_\text{ctx}(n_\text{ctx}(d_v + d_k) + d_\text{emb}(d_v+d_k+d_\text{ff})))
-```
-Assuming that ``d_v, d_k, d_\text{ff}`` has the same scale as ``d_\text{emb}``:
-```math
-O(Nn_\text{ctx}^2d_\text{emb} + Nn_\text{ctx}d_\text{emb}^2)
-```
-"""
-)
-
 # ╔═╡ 04e9b912-6712-4290-acc4-f24bb27a1469
 frametitle("Machine translation")
 
@@ -556,6 +531,39 @@ HTML(html(@draw begin
 	arrow(Point(175, -30), Point(190, -10), Point(195, 10), Point(145, 17), :stroke, startarrow=false, finisharrow=true)
 	arrow(Point(175, 120), Point(190, 130), Point(195, 150), Point(145, 192), :stroke, startarrow=false, finisharrow=true)
 end 300 400)),
+)
+
+# ╔═╡ 8d6ec2b3-997e-4df5-a3b2-c1dffa53d0ec
+qa(
+	md"What is the time complexity of a transformer with respect to ``d_\text{emb}``, ``n_\text{voc}``, ``n_\text{ctx}``, ``d_\text{ff}``, ``h`` and ``N`` ?",
+HAlign(
+md"""
+| Input | Parameters | Time |
+|-------|------------|------|
+| ``CX + P \in \mathbb{R}^{d_\text{emb} \times n_\text{ctx}}`` | ``W_j^V \in \mathbb{R}^{d_v \times d_\text{emb}}`` | ``O(d_v d_\text{emb} n_\text{ctx})`` |
+| ``CX + P \in \mathbb{R}^{d_\text{emb} \times n_\text{ctx}}`` | ``W_j^K, W_j^Q \in \mathbb{R}^{d_k \times d_\text{emb}}`` | ``O(d_k d_\text{emb} n_\text{ctx})`` |
+| ``K, Q \in \mathbb{R}^{d_k \times n_\text{ctx}}`` |  | ``O(d_k n_\text{ctx}^2)`` |
+| ``V \in \mathbb{R}^{d_v \times n_\text{ctx}}, ... \in \mathbb{R}^{n_\text{ctx} \times n_\text{ctx}}`` |  | ``O(d_v n_\text{ctx}^2)`` |
+| ``... \in \mathbb{R}^{d_v \times n_\text{ctx}}`` | ``W^O \in \mathbb{R}^{d_\text{emb} \times d_v}`` | ``O(d_\text{emb} d_v n_\text{ctx})`` |
+| ``... \in \mathbb{R}^{d_\text{emb} \times n_\text{ctx}}`` | ``W_1 \in \mathbb{R}^{d_\text{ff} \times d_\text{emb}}`` | ``O(d_\text{emb} d_\text{ff} n_\text{ctx})`` |
+| ``... \in \mathbb{R}^{d_\text{ff} \times n_\text{ctx}}`` | ``W_1 \in \mathbb{R}^{d_\text{emb} \times d_\text{ff}}`` | ``O(d_\text{emb} d_\text{ff} n_\text{ctx})`` |
+
+So for ``N`` layers (ignoring the complexity of the embedding):
+```math
+O(Nn_\text{ctx}(n_\text{ctx}(d_v + d_k) + d_\text{emb}(d_v+d_k+d_\text{ff})))
+```
+Assuming that ``d_v, d_k, d_\text{ff}`` has the same scale as ``d_\text{emb}``:
+```math
+O(Nn_\text{ctx}^2d_\text{emb} + Nn_\text{ctx}d_\text{emb}^2)
+```
+""",
+HTML(html(@draw begin
+	draw_transformer()
+	translate(-10, 150)
+	scale(0.6)
+	Luxor.placeimage(readpng("images/multi-head.png"), centered = true)
+end 300 400))
+)
 )
 
 # ╔═╡ a873f760-bfc1-489f-a58e-75e12afa54f2
