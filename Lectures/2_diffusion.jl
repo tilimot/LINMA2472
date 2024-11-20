@@ -67,7 +67,7 @@ frametitle("Score matching")
 
 # ╔═╡ 687f5cb9-5a17-49cb-8d96-a35b66fbcba3
 md"""
-Diffusion models is also known as *energy-based models* and then *score-matching*.
+Diffusion models are also known as *energy-based models* and then *score-matching*.
 
 For **fixed** ``\sigma``, the matching is ``s_\theta(y) \approx \sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)``
 
