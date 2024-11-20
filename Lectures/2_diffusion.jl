@@ -112,7 +112,7 @@ frametitle("Variance-dependent score")
 HAlign(md"""
 The matching is ``s_\theta(y\textcolor{red}{, \sigma}) \approx \sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)``.
 
-**Training**: sample ``x`` / pick ``x`` in dataset, sample ``\textcolor{red}{\alpha, }\varepsilon``, update ``\theta`` to minimize ``\|\varepsilon - s_\theta(y\textcolor{red}{, \sigma})\|^2``, e.g., using gradient descent.
+**Training**: sample ``x`` / pick ``x`` in dataset, sample ``\textcolor{red}{\sigma, }\varepsilon``, update ``\theta`` to minimize ``\|\varepsilon - s_\theta(y\textcolor{red}{, \sigma})\|^2``, e.g., using gradient descent.
 
 Animation generated with [`smalldiffusion`](https://github.com/yuanchenyang/smalldiffusion).
 
