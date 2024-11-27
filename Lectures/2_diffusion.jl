@@ -21,7 +21,8 @@ md"""
 Let ``\sigma`` be a constant and consider a random variable ``X`` with probability density function ``f_X`` as well as a random Gaussian noise ``\mathcal{E} \sim \mathcal{N}(0, 1)`` that is independent from ``X``.
 If ``Y = X + \sigma \mathcal{E}`` then
 ```math
-\mathbb{E}[X|Y=y] = y + \sigma^2 \nabla_y f_Y(y).
+\mathbb{E}[X|Y=y] = y + \sigma^2 \nabla_y f_Y(y) \qquad
+\mathbb{E}[\mathcal{E}|Y=y] = -\sigma \nabla_y f_Y(y).
 ```
 """
 
@@ -42,17 +43,31 @@ so
 y + \sigma^2 \nabla_y f_Y(y) & = \mathbb{E}[X | Y = y].
 \end{align}
 ```
+Now we have
+```math
+\begin{align}
+\mathbb{E}[\mathcal{E}|Y=y]
+& =
+\frac{\mathbb{E}[Y|Y=y] - \mathbb{E}[X|Y=y]}{\sigma}\\
+& =
+\frac{
+y - (y + \sigma^2 \nabla_y f_Y(y))
+}{\sigma}\\
+& =
+-\sigma \nabla_y f_Y(y).
+\end{align}
+```
 """)
 
 # ╔═╡ df9e106b-16c3-4605-b5f6-0a4e82dd4b3b
 HAlign(md"""
-From Tweedie's formula, ``\varepsilon`` is estimated to be
-``\sigma \nabla_y f_Y(y)``.
+From Tweedie's formula, ``\epsilon`` is estimated to be
+``-\sigma \nabla_y f_Y(y)``.
 
 **Sampler** *Langevin dynamics*:
 ```math
 \begin{multline}
-y_{k+1} = y_k + \delta_k \nabla_y f_Y(y_k) + \sqrt{2\delta_k} \epsilon_k\\
+y_{k+1} = y_k + \delta_k \nabla_y f_Y(y_k) + \sqrt{2\delta_k} w_k\\
 \text{where } \epsilon_k \sim \mathcal{N}(0, 1)
 \end{multline}
 ```
@@ -69,9 +84,13 @@ frametitle("Score matching")
 md"""
 Diffusion models are also known as *energy-based models* and then *score-matching*.
 
-For **fixed** ``\sigma``, the matching is ``s_\theta(y) \approx \sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)``
+For **fixed** ``\sigma``, the matching is ``\epsilon_\theta(y) \approx \mathbb{E}[\mathcal{E}|X + \sigma \mathcal{E} = y] = -\sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)``.
 
-**Training**: sample ``x`` / pick ``x`` in dataset, sample ``\varepsilon``, update ``\theta`` to minimize ``\|\varepsilon - s_\theta(y)\|^2``, e.g., using gradient descent. [Image source](https://yang-song.net/blog/2021/score/).
+**Training**: sample ``x`` / pick ``x`` in dataset, sample ``\varepsilon``, update ``\theta`` to minimize (e.g., using gradient descent), the loss:
+```math
+\mathbb{E}[\|\epsilon_\theta(X + \sigma \mathcal{E}) - \mathcal{E}\|^2]
+```
+[Image source](https://yang-song.net/blog/2021/score/).
 """
 
 # ╔═╡ 3cdcd14a-9102-4ed4-b186-629ce183b73c
@@ -82,10 +101,10 @@ frametitle("Issue with small variance")
 
 # ╔═╡ 0886ac78-6530-417b-80a5-5410c4719dd2
 md"""
-If ``\sigma`` is too small then ``Y \sim X + \sigma \mathcal{E}`` may not cover the whole state space → inaccurate ``s_\theta(y)`` in these parts. More formally, the loss is the Fisher divergence:
+If ``\sigma`` is too small then the support of ``X + \sigma \mathcal{E}`` may not cover the whole state space → inaccurate ``\epsilon_\theta(y)`` in these parts. More formally, the loss is the Fisher divergence:
 ```math
-\mathbb{E}[\|s_\theta(y) - \sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)\|^2]
-= \int_y f_Y(y) \|s_\theta(y) - \sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)\|^2 \,\text{d}y
+\mathbb{E}[\|\epsilon_\theta(y) + \sigma \nabla_y f_Y(y)\|^2]
+= \int_y f_Y(y) \|s_\theta(y) + \sigma \nabla_y f_Y(y)\|^2 \,\text{d}y
 ```
 so it is inaccurate for ``y`` such that ``f_Y(y)`` is too small. [Image source](https://yang-song.net/blog/2021/score/).
 """
@@ -98,7 +117,7 @@ frametitle("Issue with large variance")
 
 # ╔═╡ e33b16ec-4526-4dbe-affa-3e68aa508ab8
 md"""
-If ``\sigma`` is too large then ``s_\theta(y) \approx \sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)`` everywhere but the distribution ``Y \sim X + \sigma \mathcal{E}`` is too noisy, less specific to ``X`` (small signal to noise ratio). [Image source](https://yang-song.net/blog/2021/score/).
+If ``\sigma`` is too large then ``\epsilon_\theta(y) \approx  -\sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)`` everywhere but the distribution ``Y \sim X + \sigma \mathcal{E}`` is too noisy, less specific to ``X`` (small signal to noise ratio). [Image source](https://yang-song.net/blog/2021/score/).
 """
 
 # ╔═╡ 06e194ec-42dc-46aa-8935-86c4ed04b7c8
@@ -109,28 +128,138 @@ frametitle("Variance-dependent score")
 
 # ╔═╡ c3af23f7-8919-4e27-a97e-6013038b8d8c
 HAlign(md"""
-The matching is ``s_\theta(y\textcolor{red}{, \sigma}) \approx \sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)``.
+The matching is ``\epsilon_\theta(y\textcolor{red}{, \sigma}) \approx -\sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)``.
 
-**Training**: sample ``x`` / pick ``x`` in dataset, sample ``\textcolor{red}{\sigma, }\varepsilon``, update ``\theta`` to minimize ``\|\varepsilon - s_\theta(y\textcolor{red}{, \sigma})\|^2``, e.g., using gradient descent.
-
-Animation generated with [`smalldiffusion`](https://github.com/yuanchenyang/smalldiffusion) using a deterministic (i.e. ``\epsilon_k=0``) sampler.
-
-Use decreasing ``\sigma_k`` and ``s_\theta(y, \sigma_k)`` in
+**Training**: sample ``x`` / pick ``x`` in dataset, sample ``\textcolor{red}{\sigma, }\varepsilon``, update ``\theta`` to minimize (e.g., using gradient descent), the loss:
 ```math
-\begin{multline}
-y_{k+1} = y_k + \delta_k \nabla_y f_Y(y_k) + \sqrt{2\delta_k} \epsilon_k\\
-\text{where } \epsilon_k \sim \mathcal{N}(0, 1)
-\end{multline}
+\mathbb{E}[\|\epsilon_\theta(X + \sigma \mathcal{E} \textcolor{red}{, \sigma}) - \mathcal{E}\|^2]
 ```
+
+Animation generated with [`smalldiffusion`](https://github.com/yuanchenyang/smalldiffusion) using a deterministic (i.e. ``w_k=0``) sampler.
 """,
 img("spiral.gif"),
 )
 
+# ╔═╡ 784608dc-cf8f-483b-964f-b66575dc430e
+frametitle("Sampling")
+
+# ╔═╡ 87f3dafc-6452-4a3f-b635-9b7497e1481a
+img("DDIM")
+
+# ╔═╡ c3574e26-6e50-4f08-852a-df3ae91c197f
+frametitle("Denoising with randomness")
+
+# ╔═╡ 2cc866e8-fb23-4010-bec1-29d00202c7e1
+qa(md"What is the order between ``\sigma_{t-1}, \sigma_t`` and ``\sigma_{t'}`` ?",
+md"""
+We have ``\sigma_{t-1} < \sigma_t`` by assumption.
+Then, because ``\sigma_{t-1}`` is the geometric mean of ``\sigma_{t'}`` and ``\sigma_t``, it must be between so
+``\sigma_{t'} < \sigma_{t-1} < \sigma_t``.
+""")
+
+# ╔═╡ d3792580-6a04-4934-ad5a-cd054a5b4421
+frametitle("Auto-Encoder")
+
+# ╔═╡ de5ddee9-7a4c-4ae7-b6e2-ccdf1a406919
+md"""
+Find encoder ``E`` and decoder ``D`` that minimize the loss:
+```math
+\mathbb{E}[\|X - D(E(X))\|_2^2]
+```
+The *code* (aka *latent variable*) ``z = E(x)`` typically has smaller size compared to ``x`` to force the model to only keep essential features.
+"""
+
+# ╔═╡ 40f21927-1d88-41f4-b55d-6b81ca2ec211
+qa(md"What is the solution if ``E`` and ``D`` were linear (i.e. matrices) ?",
+md"""
+Given a matrix of data ``X``, consider the SVD ``X = U\Sigma V``:
+```math
+\begin{align}
+\|X - DEX\|_F^2
+& =
+\|U \Sigma V - DEU \Sigma V\|_F^2\\
+& =
+\|U \Sigma - DEU \Sigma\|_F^2\\
+\end{align}
+```
+The matrix ``DE`` can be any matrix of rank equal to the dimension of the latent space.
+So the optimal solution is ``DE = U\text{Diag}(\sigma_1, \ldots, \sigma_r)U^\top``
+where ``r`` is the dimension of the latent space.
+This is like the PCA so Auto-Encoder can be thought of as a nonlinear generalization of PCA.
+"""
+)
+
+# ╔═╡ 6d63c708-6f10-4a21-b57b-a9bd138b5c8c
+frametitle("Evidence Lower BOund (ELBO)")
+
+# ╔═╡ 8e39960f-ab0a-4103-bd6b-00e779333b01
+qa(md"Proof",
+md"""
+```math
+\begin{align}
+  D_\text{KL}((Y|X = x) \parallel (Z | X = x))
+  & =
+  \mathbb{E}[\log(f_{Y|X}(Y|x)) - \log(f_{Z|X}(Y|x))]\\
+  & =
+  \mathbb{E}[\log(f_{Y|X}(Y|x)) - \log(f_{Z,X}(Y,x))]\\
+  & \qquad + \log(f_{X}(x))\\
+  & =
+  \mathbb{E}[\log(f_{Y|X}(Y|x)) - \log(f_{X|Z}(x|Y)) - \log(f_{Z}(Y))]\\
+  & \qquad + \log(f_{X}(x))\\
+  & =
+  D((Y|X = x) \parallel Z) - \mathbb{E}[\log(f_{X|Z}(x|Y))]\\
+  & \qquad + \log(f_{X}(x))
+\end{align}
+```
+""",
+)
+
+# ╔═╡ d821d85c-74ae-44d0-909b-02d3099d8201
+md"``\mathcal{L}(x)`` is a **lower bound** to ``\log(f_X(x))`` as the Kullback-Leibler divergence ``D_\text{KL}((Y|X = x) \parallel (Z | X = x))`` is always nonnegative."
+
+# ╔═╡ 0788ac02-dab8-4ddd-9130-2a632d8d3685
+frametitle("Gaussian ELBO")
+
+# ╔═╡ 8f51a619-d0ad-42d2-bac9-acb9eab7cccb
+frametitle("Variational AutoEncoders (VAEs)")
+
+# ╔═╡ 23f3de75-0617-4232-bb71-bd9f3e355a1e
+md"""
+* We want to learn the distribution of our data represented by the random variable ``X``.
+* The encoder maps a data point ``x`` to a Gaussian distribution ``Y \sim \mathcal{N}(E_\mu(x), E_{\Sigma}(x)))`` over the latent space
+* The decoder maps a latent variable ``z \sim Z`` to a data point ``D(z)``
+
+The Maximum Likelyhood Estimator (MLE) maximizes the following sum over our datapoints ``x`` with its ELBO:
+```math
+\sum_x \log(f_X(x)) \ge \sum_x -D((Y|X = x) \parallel Z) + \mathbb{E}[\log(f_{X|Z}(x|Y))]]
+```
+So the MLE minimizes the loss
+```math
+-\mathbb{E}[\log(f_{X|Z}(x|Y))]]
+```
+with the KL-regularizer
+```math
+D((Y|X = x) \parallel Z)
+```
+"""
+
+# ╔═╡ ca8b4f75-f8c7-4384-80ae-fbbdba85bd46
+frametitle("Denoising Auto-Encoder")
+
 # ╔═╡ ca68ba1d-5f02-4f80-8cd1-d0c297f19f58
-frametitle("Conditionned diffusion")
+frametitle("Conditioned diffusion")
 
 # ╔═╡ b94dd60a-2116-43ce-a5c3-5f1ff24479c0
 img("stable_diffusion")
+
+# ╔═╡ 530110cc-1dc9-427e-950b-64c0d04fc0da
+frametitle("Classifier-Free Guidance")
+
+# ╔═╡ 97d6e0da-0b53-4467-95f3-a524575daa49
+img("guidance")
+
+# ╔═╡ cddf4399-c659-4bbd-bae1-6d88f37a9b93
+frametitle("Optical illusions")
 
 # ╔═╡ 2a0f227f-28b4-419e-9f82-f8bd13fca8c0
 section("Utils")
@@ -144,14 +273,130 @@ biblio = load_biblio!()
 # ╔═╡ d077a471-6b43-41df-8218-e3b4a7e38550
 cite(args...) = bibcite(biblio, args...)
 
+# ╔═╡ 6fd4e448-992f-4976-82e9-6313ba038d26
+md"""
+Image from $(cite("permenter2024Interpretinga", "Figure 1")). Deterministic DDIM : move from a variance estimate ``\sigma_t`` to ``\sigma_{t-1}``:
+```math
+\begin{align}
+X_t & = X_0 + \sigma_t \mathcal{E}\\
+\mathbb{E}[X_{t-1}|X_t = x_{t}]
+& =
+\mathbb{E}[X_0|X_t = x_t] + \sigma_{t-1} \mathbb{E}[\mathcal{E}|X_t = x_t]\\
+& =
+\mathbb{E}[X_t|X_t = x_t] - \sigma_t \mathbb{E}[\mathcal{E}|X_t = x_t] + \sigma_{t-1} \mathbb{E}[\mathcal{E}|X_t = x_t]\\
+& =
+x_t + (\sigma_{t-1} - \sigma_t) \mathbb{E}[\mathcal{E}|X_t = x_t]\\
+\end{align}
+```
+"""
+
+# ╔═╡ 45382f1f-89d7-4972-96df-1d9288a52102
+md"""
+Given ``0 \le \mu < 1``, pick ``\sigma_{t'}`` such that ``\sigma_{t-1} = \sigma_t^\mu\sigma_{t'}^{1 - \mu}`` we have the following sampler of $(cite(["permenter2024Interpretinga"])):
+```math
+\begin{align}
+x_{t - 1} & = x_t + (\sigma_{t'} - \sigma_t) \epsilon_\theta(x_t, \sigma_t) + \sqrt{\sigma_{t-1}^2 - \sigma_{t'}^2} w_t \qquad w_t \sim \mathcal{N}(0, I)
+\end{align}
+```
+For ``\mu = 0``, ``\sigma_{t'} = 0`` and we recover deterministic DDIM.
+For ``\mu = 1/2``, we have DDPM of $(cite("ho2020Denoising"))
+"""
+
+# ╔═╡ 0e01c57f-65b1-480c-a258-9a76513ac8d6
+md"""
+For any random variables ``X``, ``Y`` and ``Z``, we have
+```math
+\log(f_X(x)) = D_\text{KL}((Y|X = x) \parallel (Z | X = x)) + \mathcal{L}(x)
+```
+where the *evidence lower bound* $(cite("kingma2013AutoEncoding"))
+```math
+\mathcal{L}(x) = -D((Y|X = x) \parallel Z) + \mathbb{E}[\log(f_{X|Z}(x|Y))]]
+```
+"""
+
+# ╔═╡ 76643525-2649-48b9-9d09-6d7dcef6e355
+md"""
+Consider two deterministic functions ``E_\mu, E_\sigma : \mathbb{R}^n \to \mathbb{R}^n``.
+Suppose ``Z, \mathcal{E} \sim \mathcal{N}(0, I)`` and ``Y = E_\mu(X) + \mathcal{E} \odot E_\sigma(X)``.
+We have (see $(cite("kingma2013AutoEncoding", "Appendix B")) for a proof):
+```math
+2D((Y|X = x) \parallel Z) = \|E_\mu(X)\|_2^2 + \|E_\sigma(X)\|_2^2 - n - \sum_{i=1}^n \log(E_\sigma(X))_i^2)
+```
+For the second part of the ELBO, we have
+```math
+\mathbb{E}[\log(f_{X|Z}(x|Y))]] = \mathbb{E}[\log(f_{X|Z}(x|E_\mu(x) + \mathcal{E} \odot E_\sigma(x)))]].
+```
+This can be approximated using Monte-Carlo given ``L`` samples ``\epsilon_1, \ldots \epsilon_L`` from the distribution ``\mathcal{N}(0, I)`` as
+```math
+\mathbb{E}[\log(f_{X|Z}(x|Y))]] \approx \frac{1}{L} \sum_{i=1}^L \mathbb{E}[\log(f_{X|Z}(x|E_\mu(x) + \epsilon_i \odot E_\sigma(x)))]].
+```
+"""
+
+# ╔═╡ 1a1335db-6bc5-4a0e-a138-3513f7a2140d
+md"""
+```math
+\begin{align}
+\text{Auto-Encoder} & & D(E(X))\\
+\text{Variational Auto-Encoder} & & D(E(X) + \mathcal{E})\\
+\text{Denoising Auto-Encoder} & & D(E(X + \sigma \mathcal{E}))\\
+\end{align}
+```
+Evidence Lower-Bound with ``Y = X + \sigma \mathcal{E}`` and ``Z`` such that ``X = D(E(Z))`` $(cite("ho2020Denoising")):
+```math
+-\log(f_X(x)) \le \mathbb{E}[-\log(f_{X|Z}(x|Y))]] + D((Y|X = x) \parallel Z)
+```
+"""
+
 # ╔═╡ e0ba3b61-a618-49ce-9466-e6a8f674bd53
 md"""Source : $(cite("rombach2022HighResolution", "Figure 3"))"""
+
+# ╔═╡ 410eac96-a384-48fa-b3f3-478be5bd236c
+md"""
+Improvement for conditioned diffusion for multi-modal distributions : use classifier $(cite("dhariwal2024Diffusion")). **Issue**: need to train a classifier...
+
+This classifier-guided strategy was replaced in $(cite("ho2022ClassifierFree"))
+by a simpler trick: Train both a conditioned (with condition ``\tau``) and unconditioned diffusion model and combine then with:
+```math
+\tilde{\epsilon}_t = \textcolor{blue}{\lambda} \epsilon_\theta(x_t, \sigma_t, \tau) \textcolor{blue}{+ (1 - \lambda) \epsilon_\theta(x_t, \sigma_t)} \qquad \text{with } \lambda > 1
+```
+"""
+
+# ╔═╡ 9cd90023-cf5d-4291-ae69-bc902c5c41be
+HAlign(
+md"""
+It was shown in $(cite("burgert2023Diffusion")) how to train a diffusion model to generate illusions.
+Suprisingly, $(cite("geng2024Visual")) showed that you don't need a specialized model and you can use a pre-trained diffusion model.
+Given ``N`` transformations ``v_1, \ldots, v_N`` $(cite("geng2024Visual", "Equation (2)")):
+```math
+\tilde{\epsilon}_t = \textcolor{blue}{\frac{1}{N} \sum_{i=1}^N v_i^{-1}(}\epsilon_\theta(\textcolor{blue}{v_i(}x_t\textcolor{blue}{)}, \sigma_t, \tau)\textcolor{blue}{)}
+```
+""",
+img("flips")
+)
 
 # ╔═╡ c1fe952e-c074-49c1-91a4-0de76d235f25
 refs(args...) = bibrefs(biblio, args...)
 
+# ╔═╡ 2a728c9a-4268-40ff-905d-60b3b4c5b99b
+refs(["ho2020Denoising", "permenter2024Interpretinga"])
+
+# ╔═╡ c64fc228-d1e3-423f-8fb3-b8e7dff9d097
+refs("kingma2013AutoEncoding")
+
+# ╔═╡ 0708fa36-bf99-44e3-a69e-991ad521d34b
+refs("kingma2013AutoEncoding")
+
+# ╔═╡ 53b3d56e-f11d-44c2-96ca-3714f4b4f929
+refs("ho2020Denoising")
+
 # ╔═╡ e728cc9a-c17f-4143-9e0e-12c03a965bec
 refs("rombach2022HighResolution")
+
+# ╔═╡ 8cf52c38-a9a6-4614-a80b-b36e9d4e563f
+refs(["dhariwal2024Diffusion", "ho2022ClassifierFree"])
+
+# ╔═╡ 09829600-3488-492a-a507-53a4bbcb1cfc
+refs(["burgert2023Diffusion", "geng2024Visual"])
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1288,10 +1533,40 @@ version = "3.5.0+0"
 # ╟─06e194ec-42dc-46aa-8935-86c4ed04b7c8
 # ╟─a7435857-1526-4155-b934-4c4cda9f6b30
 # ╟─c3af23f7-8919-4e27-a97e-6013038b8d8c
+# ╟─784608dc-cf8f-483b-964f-b66575dc430e
+# ╟─87f3dafc-6452-4a3f-b635-9b7497e1481a
+# ╟─6fd4e448-992f-4976-82e9-6313ba038d26
+# ╟─c3574e26-6e50-4f08-852a-df3ae91c197f
+# ╟─45382f1f-89d7-4972-96df-1d9288a52102
+# ╟─2cc866e8-fb23-4010-bec1-29d00202c7e1
+# ╟─2a728c9a-4268-40ff-905d-60b3b4c5b99b
+# ╟─d3792580-6a04-4934-ad5a-cd054a5b4421
+# ╟─de5ddee9-7a4c-4ae7-b6e2-ccdf1a406919
+# ╟─40f21927-1d88-41f4-b55d-6b81ca2ec211
+# ╟─6d63c708-6f10-4a21-b57b-a9bd138b5c8c
+# ╟─0e01c57f-65b1-480c-a258-9a76513ac8d6
+# ╟─8e39960f-ab0a-4103-bd6b-00e779333b01
+# ╟─d821d85c-74ae-44d0-909b-02d3099d8201
+# ╟─c64fc228-d1e3-423f-8fb3-b8e7dff9d097
+# ╟─0788ac02-dab8-4ddd-9130-2a632d8d3685
+# ╟─76643525-2649-48b9-9d09-6d7dcef6e355
+# ╟─0708fa36-bf99-44e3-a69e-991ad521d34b
+# ╟─8f51a619-d0ad-42d2-bac9-acb9eab7cccb
+# ╟─23f3de75-0617-4232-bb71-bd9f3e355a1e
+# ╟─ca8b4f75-f8c7-4384-80ae-fbbdba85bd46
+# ╟─1a1335db-6bc5-4a0e-a138-3513f7a2140d
+# ╟─53b3d56e-f11d-44c2-96ca-3714f4b4f929
 # ╟─ca68ba1d-5f02-4f80-8cd1-d0c297f19f58
 # ╟─b94dd60a-2116-43ce-a5c3-5f1ff24479c0
 # ╟─e0ba3b61-a618-49ce-9466-e6a8f674bd53
 # ╟─e728cc9a-c17f-4143-9e0e-12c03a965bec
+# ╟─530110cc-1dc9-427e-950b-64c0d04fc0da
+# ╟─410eac96-a384-48fa-b3f3-478be5bd236c
+# ╟─97d6e0da-0b53-4467-95f3-a524575daa49
+# ╟─8cf52c38-a9a6-4614-a80b-b36e9d4e563f
+# ╟─cddf4399-c659-4bbd-bae1-6d88f37a9b93
+# ╟─9cd90023-cf5d-4291-ae69-bc902c5c41be
+# ╟─09829600-3488-492a-a507-53a4bbcb1cfc
 # ╟─2a0f227f-28b4-419e-9f82-f8bd13fca8c0
 # ╠═3fde5f41-32a9-4585-9b6a-131173947346
 # ╠═4b272be9-6881-41e8-9168-3fe471527aa8

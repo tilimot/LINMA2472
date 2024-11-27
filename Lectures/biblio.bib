@@ -1,3 +1,32 @@
+@inproceedings{2024ClassifierFree,
+  title = {Classifier-{{Free Guidance}} Is a {{Predictor-Corrector}}},
+  booktitle = {The {{Thirteenth International Conference}} on {{Learning Representations}}},
+  year = {2024},
+  month = oct,
+  url = {https://openreview.net/forum?id=8K36RkrI7N},
+  urldate = {2024-11-26},
+  abstract = {We investigate the theoretical foundations of classifier-free guidance (CFG). CFG is the dominant method of conditional sampling for text-to-image diffusion models, yet unlike other aspects of diffusion, it remains on shaky theoretical footing. In this paper, we disprove common misconceptions, by showing that CFG interacts differently with DDPM and DDIM, and neither sampler with CFG generates the gamma-powered distribution \$p(x|c)\textasciicircum\textbackslash gamma p(x)\textasciicircum\{1−\textbackslash gamma\}\$. Then, we clarify the behavior of CFG by showing that it is a kind of predictor-corrector method (Song et al., 2020) that alternates between denoising and sharpening, which we call predictor-corrector guidance (PCG). We prove that in the SDE limit, CFG is actually equivalent to combining a DDIM predictor for the conditional distribution together with a Langevin dynamics corrector for a gamma-powered distribution (with a carefully chosen gamma). Our work thus provides a lens to theoretically understand CFG by embedding it in a broader design space of principled sampling methods.},
+  langid = {english},
+  file = {/home/blegat/Zotero/storage/BIL97PU7/2024 - Classifier-Free Guidance is a Predictor-Corrector.pdf}
+}
+
+@misc{arechiga2023Dragguided,
+  title = {Drag-Guided Diffusion Models for Vehicle Image Generation},
+  author = {Arechiga, Nikos and Permenter, Frank and Song, Binyang and Yuan, Chenyang},
+  year = {2023},
+  month = jun,
+  number = {arXiv:2306.09935},
+  eprint = {2306.09935},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.2306.09935},
+  url = {http://arxiv.org/abs/2306.09935},
+  urldate = {2024-11-26},
+  abstract = {Denoising diffusion models trained at web-scale have revolutionized image generation. The application of these tools to engineering design is an intriguing possibility, but is currently limited by their inability to parse and enforce concrete engineering constraints. In this paper, we take a step towards this goal by proposing physics-based guidance, which enables optimization of a performance metric (as predicted by a surrogate model) during the generation process. As a proof-of-concept, we add drag guidance to Stable Diffusion, which allows this tool to generate images of novel vehicles while simultaneously minimizing their predicted drag coefficients.},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Computer Vision and Pattern Recognition,Computer Science - Graphics,Computer Science - Machine Learning},
+  file = {/home/blegat/Zotero/storage/9QI848KD/Arechiga et al. - 2023 - Drag-guided diffusion models for vehicle image generation.pdf}
+}
+
 @misc{ba2016Layer,
   title = {Layer {{Normalization}}},
   author = {Ba, Jimmy Lei and Kiros, Jamie Ryan and Hinton, Geoffrey E.},
@@ -79,6 +108,24 @@
   file = {/home/blegat/Zotero/storage/FZDYNDIF/Brown et al. - 2020 - Language Models are Few-Shot Learners.pdf}
 }
 
+@misc{burgert2023Diffusion,
+  title = {Diffusion {{Illusions}}: {{Hiding Images}} in {{Plain Sight}}},
+  shorttitle = {Diffusion {{Illusions}}},
+  author = {Burgert, Ryan and Li, Xiang and Leite, Abe and Ranasinghe, Kanchana and Ryoo, Michael S.},
+  year = {2023},
+  month = dec,
+  number = {arXiv:2312.03817},
+  eprint = {2312.03817},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.2312.03817},
+  url = {http://arxiv.org/abs/2312.03817},
+  urldate = {2024-11-27},
+  abstract = {We explore the problem of computationally generating special `prime' images that produce optical illusions when physically arranged and viewed in a certain way. First, we propose a formal definition for this problem. Next, we introduce Diffusion Illusions, the first comprehensive pipeline designed to automatically generate a wide range of these illusions. Specifically, we both adapt the existing `score distillation loss' and propose a new `dream target loss' to optimize a group of differentially parametrized prime images, using a frozen text-to-image diffusion model. We study three types of illusions, each where the prime images are arranged in different ways and optimized using the aforementioned losses such that images derived from them align with user-chosen text prompts or images. We conduct comprehensive experiments on these illusions and verify the effectiveness of our proposed method qualitatively and quantitatively. Additionally, we showcase the successful physical fabrication of our illusions -- as they are all designed to work in the real world. Our code and examples are publicly available at our interactive project website: https://diffusionillusions.com},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Computer Vision and Pattern Recognition},
+  file = {/home/blegat/Zotero/storage/5IEW7EET/Burgert et al. - 2023 - Diffusion Illusions Hiding Images in Plain Sight.pdf}
+}
+
 @misc{cho2014Properties,
   title = {On the {{Properties}} of {{Neural Machine Translation}}: {{Encoder-Decoder Approaches}}},
   shorttitle = {On the {{Properties}} of {{Neural Machine Translation}}},
@@ -97,6 +144,22 @@
   file = {/home/blegat/Zotero/storage/8KBSM9NT/Cho et al. - 2014 - On the Properties of Neural Machine Translation E.pdf}
 }
 
+@inproceedings{dhariwal2024Diffusion,
+  title = {Diffusion Models Beat {{GANs}} on Image Synthesis},
+  booktitle = {Proceedings of the 35th {{International Conference}} on {{Neural Information Processing Systems}}},
+  author = {Dhariwal, Prafulla and Nichol, Alex},
+  year = {2024},
+  month = jun,
+  series = {{{NIPS}} '21},
+  pages = {8780--8794},
+  publisher = {Curran Associates Inc.},
+  address = {Red Hook, NY, USA},
+  urldate = {2024-11-26},
+  abstract = {We show that diffusion models can achieve image sample quality superior to the current state-of-the-art generative models. We achieve this on unconditional image synthesis by finding a better architecture through a series of ablations. For conditional image synthesis, we further improve sample quality with classifier guidance: a simple, compute-efficient method for trading off diversity for fidelity using gradients from a classifier. We achieve an FID of 2.97 on ImageNet 128×128, 4.59 on ImageNet 256×256, and 7.72 on ImageNet 512×512, and we match BigGAN-deep even with as few as 25 forward passes per sample, all while maintaining better coverage of the distribution. Finally, we find that classifier guidance combines well with upsampling diffusion models, further improving FID to 3.94 on ImageNet 256×256 and 3.85 on ImageNet 512×512.},
+  isbn = {978-1-71384-539-3},
+  file = {/home/blegat/Downloads/2105.05233v4.pdf}
+}
+
 @misc{esser2021Taming,
   title = {Taming {{Transformers}} for {{High-Resolution Image Synthesis}}},
   author = {Esser, Patrick and Rombach, Robin and Ommer, Björn},
@@ -112,6 +175,24 @@
   archiveprefix = {arXiv},
   keywords = {Computer Science - Computer Vision and Pattern Recognition},
   file = {/home/blegat/Zotero/storage/SMPJEZAE/Esser et al. - 2021 - Taming Transformers for High-Resolution Image Synthesis.pdf}
+}
+
+@misc{geng2024Visual,
+  title = {Visual {{Anagrams}}: {{Generating Multi-View Optical Illusions}} with {{Diffusion Models}}},
+  shorttitle = {Visual {{Anagrams}}},
+  author = {Geng, Daniel and Park, Inbum and Owens, Andrew},
+  year = {2024},
+  month = apr,
+  number = {arXiv:2311.17919},
+  eprint = {2311.17919},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.2311.17919},
+  url = {http://arxiv.org/abs/2311.17919},
+  urldate = {2024-11-27},
+  abstract = {We address the problem of synthesizing multi-view optical illusions: images that change appearance upon a transformation, such as a flip or rotation. We propose a simple, zero-shot method for obtaining these illusions from off-the-shelf text-to-image diffusion models. During the reverse diffusion process, we estimate the noise from different views of a noisy image, and then combine these noise estimates together and denoise the image. A theoretical analysis suggests that this method works precisely for views that can be written as orthogonal transformations, of which permutations are a subset. This leads to the idea of a visual anagram--an image that changes appearance under some rearrangement of pixels. This includes rotations and flips, but also more exotic pixel permutations such as a jigsaw rearrangement. Our approach also naturally extends to illusions with more than two views. We provide both qualitative and quantitative results demonstrating the effectiveness and flexibility of our method. Please see our project webpage for additional visualizations and results: https://dangeng.github.io/visual\_anagrams/},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Computer Vision and Pattern Recognition},
+  file = {/home/blegat/Zotero/storage/U2HY8RWL/Geng et al. - 2024 - Visual Anagrams Generating Multi-View Optical Illusions with Diffusion Models.pdf}
 }
 
 @book{goodfellow2016Deep,
@@ -194,6 +275,39 @@
   file = {/home/blegat/Zotero/storage/S8MG8N6Z/He et al. - 2016 - Identity Mappings in Deep Residual Networks.pdf}
 }
 
+@inproceedings{ho2020Denoising,
+  title = {Denoising Diffusion Probabilistic Models},
+  booktitle = {Proceedings of the 34th {{International Conference}} on {{Neural Information Processing Systems}}},
+  author = {Ho, Jonathan and Jain, Ajay and Abbeel, Pieter},
+  year = {2020},
+  month = dec,
+  series = {{{NIPS}} '20},
+  pages = {6840--6851},
+  publisher = {Curran Associates Inc.},
+  address = {Red Hook, NY, USA},
+  urldate = {2024-11-26},
+  abstract = {We present high quality image synthesis results using diffusion probabilistic models, a class of latent variable models inspired by considerations from nonequilibrium thermodynamics. Our best results are obtained by training on a weighted variational bound designed according to a novel connection between diffusion probabilistic models and denoising score matching with Langevin dynamics, and our models naturally admit a progressive lossy decompression scheme that can be interpreted as a generalization of autoregressive decoding. On the unconditional CIFAR10 dataset, we obtain an Inception score of 9.46 and a state-of-the-art FID score of 3.17. On 256x256 LSUN, we obtain sample quality similar to ProgressiveGAN.},
+  isbn = {978-1-71382-954-6},
+  file = {/home/blegat/Downloads/2006.11239v2.pdf;/home/blegat/Zotero/storage/J3LCCI4N/Ho et al. - 2020 - Denoising diffusion probabilistic models.pdf}
+}
+
+@misc{ho2022ClassifierFree,
+  title = {Classifier-{{Free Diffusion Guidance}}},
+  author = {Ho, Jonathan and Salimans, Tim},
+  year = {2022},
+  month = jul,
+  number = {arXiv:2207.12598},
+  eprint = {2207.12598},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.2207.12598},
+  url = {http://arxiv.org/abs/2207.12598},
+  urldate = {2024-11-26},
+  abstract = {Classifier guidance is a recently introduced method to trade off mode coverage and sample fidelity in conditional diffusion models post training, in the same spirit as low temperature sampling or truncation in other types of generative models. Classifier guidance combines the score estimate of a diffusion model with the gradient of an image classifier and thereby requires training an image classifier separate from the diffusion model. It also raises the question of whether guidance can be performed without a classifier. We show that guidance can be indeed performed by a pure generative model without such a classifier: in what we call classifier-free guidance, we jointly train a conditional and an unconditional diffusion model, and we combine the resulting conditional and unconditional score estimates to attain a trade-off between sample quality and diversity similar to that obtained using classifier guidance.},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Artificial Intelligence,Computer Science - Machine Learning},
+  file = {/home/blegat/Zotero/storage/BHPXYV3P/Ho and Salimans - 2022 - Classifier-Free Diffusion Guidance.pdf}
+}
+
 @misc{ioffe2015Batch,
   title = {Batch {{Normalization}}: {{Accelerating Deep Network Training}} by {{Reducing Internal Covariate Shift}}},
   shorttitle = {Batch {{Normalization}}},
@@ -210,6 +324,18 @@
   archiveprefix = {arXiv},
   keywords = {Computer Science - Machine Learning},
   file = {/home/blegat/Zotero/storage/KCW96XU3/Ioffe and Szegedy - 2015 - Batch Normalization Accelerating Deep Network Training by Reducing Internal Covariate Shift.pdf}
+}
+
+@article{kingma2013AutoEncoding,
+  title = {Auto-{{Encoding Variational Bayes}}},
+  author = {Kingma, Diederik P. and Welling, Max},
+  year = {2013},
+  month = dec,
+  url = {https://openreview.net/forum?id=33X9fd2-9FyZd},
+  urldate = {2024-11-26},
+  abstract = {Can we efficiently learn the parameters of directed probabilistic models, in the presence of continuous latent variables with intractable posterior distributions? We introduce an unsupervised on-line learning method that efficiently optimizes the variational lower bound on the marginal likelihood and that, under some mild conditions, even works in the intractable case. The method optimizes a probabilistic encoder (also called a recognition network) to approximate the intractable posterior distribution of the latent variables. The crucial element is a reparameterization of the variational bound with an independent noise variable, yielding a stochastic objective function which can be jointly optimized w.r.t. variational and generative parameters using standard gradient-based stochastic optimization methods. Theoretical advantages are reflected in experimental results.},
+  langid = {english},
+  file = {/home/blegat/Downloads/1312.6114v11.pdf}
 }
 
 @misc{kudo2018SentencePiece,
@@ -258,6 +384,23 @@
   archiveprefix = {arXiv},
   keywords = {Computer Science - Machine Learning,Computer Science - Sound},
   file = {/home/blegat/Zotero/storage/LHLFBAFU/Oord et al. - 2016 - WaveNet A Generative Model for Raw Audio.pdf}
+}
+
+@misc{permenter2024Interpretinga,
+  title = {Interpreting and {{Improving Diffusion Models}} from an {{Optimization Perspective}}},
+  author = {Permenter, Frank and Yuan, Chenyang},
+  year = {2024},
+  month = jun,
+  number = {arXiv:2306.04848},
+  eprint = {2306.04848},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.2306.04848},
+  url = {http://arxiv.org/abs/2306.04848},
+  urldate = {2024-11-26},
+  abstract = {Denoising is intuitively related to projection. Indeed, under the manifold hypothesis, adding random noise is approximately equivalent to orthogonal perturbation. Hence, learning to denoise is approximately learning to project. In this paper, we use this observation to interpret denoising diffusion models as approximate gradient descent applied to the Euclidean distance function. We then provide straight-forward convergence analysis of the DDIM sampler under simple assumptions on the projection error of the denoiser. Finally, we propose a new gradient-estimation sampler, generalizing DDIM using insights from our theoretical results. In as few as 5-10 function evaluations, our sampler achieves state-of-the-art FID scores on pretrained CIFAR-10 and CelebA models and can generate high quality samples on latent diffusion models.},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Computer Vision and Pattern Recognition,Computer Science - Machine Learning,Mathematics - Optimization and Control,Statistics - Machine Learning},
+  file = {/home/blegat/Zotero/storage/QB7WUIYL/Permenter and Yuan - 2024 - Interpreting and Improving Diffusion Models from an Optimization Perspective.pdf}
 }
 
 @misc{press2017Using,
@@ -317,6 +460,19 @@
   file = {/home/blegat/Zotero/storage/FKNVQFPG/Rombach et al. - 2022 - High-Resolution Image Synthesis With Latent Diffus.pdf}
 }
 
+@inproceedings{roweis1997EM,
+  title = {{{EM Algorithms}} for {{PCA}} and {{SPCA}}},
+  booktitle = {Advances in {{Neural Information Processing Systems}}},
+  author = {Roweis, Sam},
+  year = {1997},
+  volume = {10},
+  publisher = {MIT Press},
+  url = {https://proceedings.neurips.cc/paper_files/paper/1997/hash/d9731321ef4e063ebbee79298fa36f56-Abstract.html},
+  urldate = {2024-11-26},
+  abstract = {I  present  an  expectation-maximization  (EM)  algorithm  for  principal  component analysis (PCA). The algorithm allows a few eigenvectors and  eigenvalues to  be extracted from  large collections of high dimensional  data.  It is computationally very efficient in space and time.  It also natu(cid:173) rally accommodates missing infonnation.  I also introduce a new variant  of PC A called sensible principal component analysis (SPCA) which de(cid:173) fines a proper density model in the data space. Learning for SPCA is also  done with an EM algorithm.  I report results on synthetic and real data  showing that these EM algorithms correctly and efficiently find the lead(cid:173) ing eigenvectors of the covariance of datasets in a few iterations using up  to hundreds of thousands of datapoints in thousands of dimensions.},
+  file = {/home/blegat/Zotero/storage/JUY9QJCW/Roweis - 1997 - EM Algorithms for PCA and SPCA.pdf}
+}
+
 @misc{sennrich2016Neural,
   title = {Neural {{Machine Translation}} of {{Rare Words}} with {{Subword Units}}},
   author = {Sennrich, Rico and Haddow, Barry and Birch, Alexandra},
@@ -348,6 +504,23 @@
   abstract = {A central problem in machine learning involves modeling complex data-sets using highly flexible families of probability distributions in which learning, sampling, inference, and evaluation are still analytically or computationally tractable. Here, we develop an approach that simultaneously achieves both flexibility and tractability. The essential idea, inspired by non-equilibrium statistical physics, is to systematically and slowly destroy structure in a data distribution through an iterative forward diffusion process. We then learn a reverse diffusion process that restores structure in data, yielding a highly flexible and tractable generative model of the data. This approach allows us to rapidly learn, sample from, and evaluate probabilities in deep generative models with thousands of layers or time steps, as well as to compute conditional and posterior probabilities under the learned model. We additionally release an open source reference implementation of the algorithm.},
   langid = {english},
   file = {/home/blegat/Zotero/storage/SC7VU3IE/Sohl-Dickstein et al. - 2015 - Deep Unsupervised Learning using Nonequilibrium Thermodynamics.pdf}
+}
+
+@misc{song2023Surrogatea,
+  title = {Surrogate {{Modeling}} of {{Car Drag Coefficient}} with {{Depth}} and {{Normal Renderings}}},
+  author = {Song, Binyang and Yuan, Chenyang and Permenter, Frank and Arechiga, Nikos and Ahmed, Faez},
+  year = {2023},
+  month = may,
+  number = {arXiv:2306.06110},
+  eprint = {2306.06110},
+  publisher = {arXiv},
+  doi = {10.48550/arXiv.2306.06110},
+  url = {http://arxiv.org/abs/2306.06110},
+  urldate = {2024-11-26},
+  abstract = {Generative AI models have made significant progress in automating the creation of 3D shapes, which has the potential to transform car design. In engineering design and optimization, evaluating engineering metrics is crucial. To make generative models performance-aware and enable them to create high-performing designs, surrogate modeling of these metrics is necessary. However, the currently used representations of three-dimensional (3D) shapes either require extensive computational resources to learn or suffer from significant information loss, which impairs their effectiveness in surrogate modeling. To address this issue, we propose a new two-dimensional (2D) representation of 3D shapes. We develop a surrogate drag model based on this representation to verify its effectiveness in predicting 3D car drag. We construct a diverse dataset of 9,070 high-quality 3D car meshes labeled by drag coefficients computed from computational fluid dynamics (CFD) simulations to train our model. Our experiments demonstrate that our model can accurately and efficiently evaluate drag coefficients with an \$R\textasciicircum 2\$ value above 0.84 for various car categories. Moreover, the proposed representation method can be generalized to many other product categories beyond cars. Our model is implemented using deep neural networks, making it compatible with recent AI image generation tools (such as Stable Diffusion) and a significant step towards the automatic generation of drag-optimized car designs. We have made the dataset and code publicly available at https://decode.mit.edu/projects/dragprediction/.},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Computational Engineering Finance and Science,Computer Science - Computer Vision and Pattern Recognition,Computer Science - Machine Learning},
+  file = {/home/blegat/Zotero/storage/9A59SRMX/Song et al. - 2023 - Surrogate Modeling of Car Drag Coefficient with Depth and Normal Renderings.pdf}
 }
 
 @article{stein1981Estimation,
@@ -528,6 +701,41 @@
   urldate = {2024-10-11},
   abstract = {The dominant sequence transduction models are based on complex recurrent orconvolutional neural networks in an encoder and decoder configuration. The best performing such models also connect the encoder and decoder through an attentionm echanisms.  We propose a novel, simple network architecture based solely onan attention mechanism, dispensing with recurrence and convolutions entirely.Experiments on two machine translation tasks show these models to be superiorin quality while being more parallelizable and requiring significantly less timeto train. Our single model with 165 million parameters, achieves 27.5 BLEU onEnglish-to-German translation, improving over the existing best ensemble result by over 1 BLEU. On English-to-French translation, we outperform the previoussingle state-of-the-art with model by 0.7 BLEU, achieving a BLEU score of 41.1.},
   file = {/home/blegat/Zotero/storage/MHSU76D9/Vaswani et al. - 2017 - Attention is All you Need.pdf}
+}
+
+@inproceedings{vincent2008Extracting,
+  title = {Extracting and Composing Robust Features with Denoising Autoencoders},
+  booktitle = {Proceedings of the 25th International Conference on {{Machine}} Learning},
+  author = {Vincent, Pascal and Larochelle, Hugo and Bengio, Yoshua and Manzagol, Pierre-Antoine},
+  year = {2008},
+  month = jul,
+  series = {{{ICML}} '08},
+  pages = {1096--1103},
+  publisher = {Association for Computing Machinery},
+  address = {New York, NY, USA},
+  doi = {10.1145/1390156.1390294},
+  url = {https://dl.acm.org/doi/10.1145/1390156.1390294},
+  urldate = {2024-11-26},
+  abstract = {Previous work has shown that the difficulties in learning deep generative or discriminative models can be overcome by an initial unsupervised learning step that maps inputs to useful intermediate representations. We introduce and motivate a new training principle for unsupervised learning of a representation based on the idea of making the learned representations robust to partial corruption of the input pattern. This approach can be used to train autoencoders, and these denoising autoencoders can be stacked to initialize deep architectures. The algorithm can be motivated from a manifold learning and information theoretic perspective or from a generative model perspective. Comparative experiments clearly show the surprising advantage of corrupting the input of autoencoders on a pattern classification benchmark suite.},
+  isbn = {978-1-60558-205-4},
+  file = {/home/blegat/Zotero/storage/2X2UNKTH/Vincent et al. - 2008 - Extracting and composing robust features with denoising autoencoders.pdf}
+}
+
+@article{vincent2011Connection,
+  title = {A {{Connection Between Score Matching}} and {{Denoising Autoencoders}}},
+  author = {Vincent, Pascal},
+  year = {2011},
+  month = jul,
+  journal = {Neural Computation},
+  volume = {23},
+  number = {7},
+  pages = {1661--1674},
+  issn = {0899-7667},
+  doi = {10.1162/NECO_a_00142},
+  url = {https://ieeexplore.ieee.org/document/6795935},
+  urldate = {2024-11-26},
+  abstract = {Denoising autoencoders have been previously shown to be competitive alternatives to restricted Boltzmann machines for unsupervised pretraining of each layer of a deep architecture. We show that a simple denoising autoencoder training criterion is equivalent to matching the score (with respect to the data) of a specific energy-based model to that of a nonparametric Parzen density estimator of the data. This yields several useful insights. It defines a proper probabilistic model for the denoising autoencoder technique, which makes it in principle possible to sample from them or rank examples by their energy. It suggests a different way to apply score matching that is related to learning to denoise and does not require computing second derivatives. It justifies the use of tied weights between the encoder and decoder and suggests ways to extend the success of denoising autoencoders to a larger family of energy-based models.},
+  file = {/home/blegat/Zotero/storage/8CVUIHAH/Vincent - 2011 - A Connection Between Score Matching and Denoising Autoencoders.pdf}
 }
 
 @misc{wang2024MambaByte,
