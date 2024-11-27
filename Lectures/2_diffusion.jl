@@ -157,6 +157,28 @@ Then, because ``\sigma_{t-1}`` is the geometric mean of ``\sigma_{t'}`` and ``\s
 ``\sigma_{t'} < \sigma_{t-1} < \sigma_t``.
 """)
 
+# ╔═╡ e50cffb2-ac51-483a-92d0-a19531ebb547
+qa(md"What should ``\eta`` be ?",
+md"""
+We want the noise level of ``x_{t-1}`` to be at ``\sigma_{t-1}``.
+So we want
+```math
+\sigma_{t-1}^2 = \text{Var}(\sigma_{t'} \mathcal{E}_\theta(x_t, \sigma_t) + \eta W_t)
+```
+As ``W_t`` and ``\mathcal{E}_\theta(x_t, \sigma_t)`` are independent, their covariance is zero so
+```math
+\sigma_{t-1}^2 = \sigma_{t'}^2 \text{Var}(\mathcal{E}_\theta(x_t, \sigma_t)) + \eta^2 \text{Var}(W_t)
+```
+Their variance is one so we have
+```math
+\sigma_{t-1}^2 = \sigma_{t'}^2 + \eta^2
+```
+This means that we should take ``\eta = \sqrt{\sigma_{t-1}^2 - \sigma_{t'}^2}``.
+""")
+
+# ╔═╡ a9e46466-cdbf-4539-ae36-a3113634b353
+frametitle("Acceleration")
+
 # ╔═╡ d3792580-6a04-4934-ad5a-cd054a5b4421
 frametitle("Auto-Encoder")
 
@@ -183,9 +205,9 @@ Given a matrix of data ``X``, consider the SVD ``X = U\Sigma V``:
 \end{align}
 ```
 The matrix ``DE`` can be any matrix of rank equal to the dimension of the latent space.
-So the optimal solution is ``DE = U\text{Diag}(\sigma_1, \ldots, \sigma_r)U^\top``
+So the optimal solution is ``DE = U\text{Diag}(\mathbf{1}_r, \mathbf{0}_{n-r})U^\top``
 where ``r`` is the dimension of the latent space.
-This is like the PCA so Auto-Encoder can be thought of as a nonlinear generalization of PCA.
+This is similar to the PCA ``DE = U\text{Diag}(\sigma_1, \ldots, \sigma_r, \mathbf{0}_{n-r})V^\top`` which is the minimizer of ``\|X - DE\|_F^2`` so Auto-Encoder can be thought of as a nonlinear generalization of PCA.
 """
 )
 
@@ -295,12 +317,30 @@ md"""
 Given ``0 \le \mu < 1``, pick ``\sigma_{t'}`` such that ``\sigma_{t-1} = \sigma_t^\mu\sigma_{t'}^{1 - \mu}`` we have the following sampler of $(cite(["permenter2024Interpretinga"])):
 ```math
 \begin{align}
-x_{t - 1} & = x_t + (\sigma_{t'} - \sigma_t) \epsilon_\theta(x_t, \sigma_t) + \sqrt{\sigma_{t-1}^2 - \sigma_{t'}^2} w_t \qquad w_t \sim \mathcal{N}(0, I)
+x_{t - 1} & = x_t + (\textcolor{purple}{\sigma_{t'}} - \sigma_t) \epsilon_\theta(x_t, \sigma_t) \textcolor{purple}{+ \eta w_t} \qquad w_t \sim \mathcal{N}(0, I)
 \end{align}
 ```
-For ``\mu = 0``, ``\sigma_{t'} = 0`` and we recover deterministic DDIM.
+For ``\mu = 0``, ``\sigma_{t'} = \sigma_{t-1}`` and we recover deterministic DDIM.
 For ``\mu = 1/2``, we have DDPM of $(cite("ho2020Denoising"))
 """
+
+# ╔═╡ 78dd39e3-d549-4012-92d1-3a1c8033ac29
+HAlign(
+md"""
+As ``\epsilon_\theta(x_t, \sigma_t)`` is more accurate than
+``\epsilon_\theta(x_{t+1}, \sigma_{t+1})``,
+$(cite("permenter2024Interpretinga", "Section 5"))
+suggests to accelerate the convergence by correcting part of
+the previous step. That is, we take:
+```math
+\bar{\epsilon}_t = \textcolor{purple}{\gamma} \epsilon_\theta(x_t, \sigma_t) \textcolor{purple}{+ (1 - \gamma) \epsilon_\theta(x_{t+1}, \sigma_{t+1})}
+```
+with ``\gamma > 1``.
+
+Image is $(cite("permenter2024Interpretinga", "Figure 3")).
+""",
+img("ge_step")
+)
 
 # ╔═╡ 0e01c57f-65b1-480c-a258-9a76513ac8d6
 md"""
@@ -357,7 +397,7 @@ Improvement for conditioned diffusion for multi-modal distributions : use classi
 This classifier-guided strategy was replaced in $(cite("ho2022ClassifierFree"))
 by a simpler trick: Train both a conditioned (with condition ``\tau``) and unconditioned diffusion model and combine then with:
 ```math
-\tilde{\epsilon}_t = \textcolor{blue}{\lambda} \epsilon_\theta(x_t, \sigma_t, \tau) \textcolor{blue}{+ (1 - \lambda) \epsilon_\theta(x_t, \sigma_t)} \qquad \text{with } \lambda > 1
+\bar{\epsilon}_t = \textcolor{purple}{\lambda} \epsilon_\theta(x_t, \sigma_t, \tau) \textcolor{purple}{+ (1 - \lambda) \epsilon_\theta(x_t, \sigma_t)} \qquad \text{with } \lambda > 1
 ```
 """
 
@@ -368,7 +408,7 @@ It was shown in $(cite("burgert2023Diffusion")) how to train a diffusion model t
 Suprisingly, $(cite("geng2024Visual")) showed that you don't need a specialized model and you can use a pre-trained diffusion model.
 Given ``N`` transformations ``v_1, \ldots, v_N`` $(cite("geng2024Visual", "Equation (2)")):
 ```math
-\tilde{\epsilon}_t = \textcolor{blue}{\frac{1}{N} \sum_{i=1}^N v_i^{-1}(}\epsilon_\theta(\textcolor{blue}{v_i(}x_t\textcolor{blue}{)}, \sigma_t, \tau)\textcolor{blue}{)}
+\bar{\epsilon}_t = \textcolor{purple}{\frac{1}{N} \sum_{i=1}^N v_i^{-1}(}\epsilon_\theta(\textcolor{purple}{v_i(}x_t\textcolor{purple}{)}, \sigma_t, \tau)\textcolor{purple}{)}
 ```
 """,
 img("flips")
@@ -379,6 +419,9 @@ refs(args...) = bibrefs(biblio, args...)
 
 # ╔═╡ 2a728c9a-4268-40ff-905d-60b3b4c5b99b
 refs(["ho2020Denoising", "permenter2024Interpretinga"])
+
+# ╔═╡ fbb03a1a-99ef-4d98-8ba4-10d3cc026abc
+refs("permenter2024Interpretinga")
 
 # ╔═╡ c64fc228-d1e3-423f-8fb3-b8e7dff9d097
 refs("kingma2013AutoEncoding")
@@ -1539,7 +1582,11 @@ version = "3.5.0+0"
 # ╟─c3574e26-6e50-4f08-852a-df3ae91c197f
 # ╟─45382f1f-89d7-4972-96df-1d9288a52102
 # ╟─2cc866e8-fb23-4010-bec1-29d00202c7e1
+# ╟─e50cffb2-ac51-483a-92d0-a19531ebb547
 # ╟─2a728c9a-4268-40ff-905d-60b3b4c5b99b
+# ╟─a9e46466-cdbf-4539-ae36-a3113634b353
+# ╟─78dd39e3-d549-4012-92d1-3a1c8033ac29
+# ╟─fbb03a1a-99ef-4d98-8ba4-10d3cc026abc
 # ╟─d3792580-6a04-4934-ad5a-cd054a5b4421
 # ╟─de5ddee9-7a4c-4ae7-b6e2-ccdf1a406919
 # ╟─40f21927-1d88-41f4-b55d-6b81ca2ec211
