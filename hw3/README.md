@@ -1,4 +1,5 @@
 # Homework 3
+
 In this last homework, you will leverage a trained diffusion model to produce images that meet various requirements.
 
 A base code is provided here: https://colab.research.google.com/drive/1VICxaD-RZFWCvytk5aWQrmdDzrnJskY1
@@ -31,3 +32,5 @@ Submit your codes and report in a single zip file on Moodle by Friday 20 Decembe
 Your report should be concise and clear, in pdf format, and with maximum 10 pages (all included). Make sure you use pdf fromat for your images as this will make them easier to read. Do not forget to include a few words about the methods that you use to show the reader that you understand what you are actually doing.
 
 Best of luck!
+
+Any question ? Feel free to contact Rémi Delogne `remi.delogne@uclouvain.be` or Brieuc Pinon `brieuc.pinon@uclouvain.be`.
