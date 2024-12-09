@@ -1,9 +1,8 @@
 # Homework 3
-
 In this last homework, you will leverage a trained diffusion model to produce images that meet various requirements.
 
 A base code is provided here: https://colab.research.google.com/drive/1VICxaD-RZFWCvytk5aWQrmdDzrnJskY1
-You can run it online on Google Colab, on your machine or on the CÉCI clusters (see the README of HW1 for the CÉCI instructions). This code loads and defines everything necessary to generate an image conditioned on a text prompt using classifier-free guidance. Your goal will be to adapt the sampling process. 
+You can run it online on Google Colab or on your machine. This code loads and defines everything necessary to generate an image conditioned on a text prompt using classifier-free guidance. Your goal will be to adapt the sampling process. 
 
 ## Tasks
 ### Warm-Up
@@ -19,11 +18,12 @@ You can run it online on Google Colab, on your machine or on the CÉCI clusters 
 You will implement the idea described in this paper: https://arxiv.org/pdf/2311.17919
 The idea is to average several directions in each generation step to generate an image following several prompts under different views.
   * Implement a new version of the sample function that implements this idea. Here we use the empty prompt `""` and two other prompts. Implement the following update pseudocode at each generation iteration:
-    - `eps0 = model(xt, "")`
-    - `eps1 = model(xt, prompt1)`
-    - `eps2 = model(flip(xt), prompt2)`
-    - `eps = (1-c)*eps0 + c/2*eps1 + c/2*flip(eps2)`
-    - `x_{t-1} = xt + (sig_{t-1} - sig_t) eps`
+    - `eps00 = model(xt, "")`
+    - `eps01 = model(xt, prompt1)`
+    - `eps10 = model(flip(xt), "")`
+    - `eps11 = model(flip(xt), prompt2)`
+    - `eps = (1-c)/2*(eps00+flip(eps10)) + c/2*eps01 + c/2*flip(eps11)`
+    - `x_{t-1} = xt - (sig_t - sig_{t-1}) eps`
   * Generate two illusions.
   * Propose and implement your own way of creating illusions based on this idea.
 
@@ -32,5 +32,3 @@ Submit your codes and report in a single zip file on Moodle by Friday 20 Decembe
 Your report should be concise and clear, in pdf format, and with maximum 10 pages (all included). Make sure you use pdf fromat for your images as this will make them easier to read. Do not forget to include a few words about the methods that you use to show the reader that you understand what you are actually doing.
 
 Best of luck!
-
-Any question ? Feel free to contact Rémi Delogne `remi.delogne@uclouvain.be` or Brieuc Pinon `brieuc.pinon@uclouvain.be`.
