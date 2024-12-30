@@ -28,9 +28,9 @@ Given a sequence of ``n_\text{ctx}`` past vectors ``x_{-1}, \ldots, x_{-n_\text{
 \end{align}
 ```
 
-* **Model** : Probability of next vector ``p(x_0 | X)`` where ``X`` concatenates ``x_{-1}, \ldots, x_{-n_\text{ctx}}``.
-* **Loss** : Cross-entropy : ``\mathcal{L}_{\hat{P}}(X) \triangleq H(p, \hat{p}) = -\textbf{E}_p[\log(\hat{p})] = -\sum_{x_0} p(x_0 | X) \log(\hat{p}(x_0 | X))``
-* Particular case for ``p(x_0 | X) = \delta_y`` : ``\mathcal{L}_{\hat{p}}(X) = -\log(p(y | X))``
+* **Model** : Probability of next vector ``\hat{p}(x_0 | X)`` where ``X`` concatenates ``x_{-1}, \ldots, x_{-n_\text{ctx}}``.
+* **Loss** : Cross-entropy : ``\mathcal{L}_{\hat{p}}(X) \triangleq H(p, \hat{p}) = -\textbf{E}_p[\log(\hat{p})] = -\sum_{x_0} p(x_0 | X) \log(\hat{p}(x_0 | X))``
+* Particular case for ``\hat{p}(x_0 | X) = \delta_y`` : ``\mathcal{L}_{\hat{p}}(X) = -\log(\hat{p}(y | X))``
 
 #### What about Language Models ?
 
@@ -520,7 +520,7 @@ md"""
 
 *Rotary Positional Encoding* $(cite("su2023RoFormer")) replaces
 ``W^K(Cx_i + p_i)`` and ``W^Q(Cx_i + p_i)``
-by ``R^i W^KCx_i`` and ``R^i W_QCx_i`` where ``R`` is a rotation matrix.
+by ``R^i W^KCx_i`` and ``R^i W^QCx_i`` where ``R`` is a rotation matrix.
 Advantage : ``\langle k_i, q_j \rangle`` contains ``R^{i - j}`` → **relative** difference of position.
 """,
 HTML(html(@draw begin
@@ -546,7 +546,7 @@ md"""
 | ``V \in \mathbb{R}^{d_v \times n_\text{ctx}}, ... \in \mathbb{R}^{n_\text{ctx} \times n_\text{ctx}}`` |  | ``O(d_v n_\text{ctx}^2)`` |
 | ``... \in \mathbb{R}^{d_v \times n_\text{ctx}}`` | ``W^O \in \mathbb{R}^{d_\text{emb} \times d_v}`` | ``O(d_\text{emb} d_v n_\text{ctx})`` |
 | ``... \in \mathbb{R}^{d_\text{emb} \times n_\text{ctx}}`` | ``W_1 \in \mathbb{R}^{d_\text{ff} \times d_\text{emb}}`` | ``O(d_\text{emb} d_\text{ff} n_\text{ctx})`` |
-| ``... \in \mathbb{R}^{d_\text{ff} \times n_\text{ctx}}`` | ``W_1 \in \mathbb{R}^{d_\text{emb} \times d_\text{ff}}`` | ``O(d_\text{emb} d_\text{ff} n_\text{ctx})`` |
+| ``... \in \mathbb{R}^{d_\text{ff} \times n_\text{ctx}}`` | ``W_2 \in \mathbb{R}^{d_\text{emb} \times d_\text{ff}}`` | ``O(d_\text{emb} d_\text{ff} n_\text{ctx})`` |
 
 So for ``N`` layers (ignoring the complexity of the embedding):
 ```math
@@ -863,7 +863,7 @@ PrettyTables = "~2.4.0"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.1"
+julia_version = "1.11.2"
 manifest_format = "2.0"
 project_hash = "174c71434e9f26a086422d879d9ed7fa3081c082"
 
