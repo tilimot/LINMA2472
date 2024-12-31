@@ -21,8 +21,8 @@ md"""
 Let ``\sigma`` be a constant and consider a random variable ``X`` with probability density function ``f_X`` as well as a random Gaussian noise ``\mathcal{E} \sim \mathcal{N}(0, 1)`` that is independent from ``X``.
 If ``Y = X + \sigma \mathcal{E}`` then
 ```math
-\mathbb{E}[X|Y=y] = y + \sigma^2 \nabla_y f_Y(y) \qquad
-\mathbb{E}[\mathcal{E}|Y=y] = -\sigma \nabla_y f_Y(y).
+\mathbb{E}[X|Y=y] = y + \sigma^2 \nabla_y \log f_Y(y) \qquad
+\mathbb{E}[\mathcal{E}|Y=y] = -\sigma \nabla_y \log f_Y(y).
 ```
 """
 
@@ -38,9 +38,27 @@ so
 \begin{align}
 \nabla_y f_Y(y)
 & = \int_x f_X(x) \nabla_y f_\mathcal{E}((y - x)/\sigma) \, \text{d} x\\
-& = \int_x f_X(x) \frac{x - y}{\sigma^2} f_\mathcal{E}(y - x) \, \text{d} x\\
-\sigma^2 \nabla_y f_Y(y) & = \int_x f_X(x) x f_\mathcal{E}(y - x) \, \text{d} x - y\\
-y + \sigma^2 \nabla_y f_Y(y) & = \mathbb{E}[X | Y = y].
+\end{align}
+```
+We now use the fact that ``\mathcal{E}`` is normally distributed. Because of this,
+we have
+```math
+\begin{align}
+\nabla_y f_\mathcal{E}((y - x)/\sigma)
+& = \frac{1}{\sqrt{2\pi}} \nabla_y \exp\left(-\frac{1}{2\sigma^2}\|x-y\|^2\right)\\
+& = -\frac{\nabla_y \|x-y\|^2}{2\sigma^2} f_\mathcal{E}((y - x)/\sigma)\\
+& = \frac{x-y}{\sigma^2} f_\mathcal{E}((y - x)/\sigma)\\
+\end{align}
+```
+Plugging this into the above integral, we get
+```math
+\begin{align}
+\nabla_y f_Y(y) & = \int_x f_X(x) \frac{x - y}{\sigma^2} f_\mathcal{E}((y - x)/\sigma) \, \text{d} x\\
+\sigma^2 \nabla_y f_Y(y) & = \int_x f_X(x) x f_\mathcal{E}((y - x)/\sigma) \, \text{d} x - y f_Y(y)\\
+\sigma^2 \nabla_y f_Y(y) & = \int_x f_X(x) x f_\mathcal{E}((y - x)/\sigma) \, \text{d} x - y \int_x f_X(x) f_\mathcal{E}((y - x)/\sigma) \, \text{d} x\\
+\sigma^2 \nabla_y f_Y(y) & = \mathbb{E}[X | Y = y] f_Y(y) - y f_Y(y)\\
+\sigma^2 \nabla_y \log f_Y(y) & = \mathbb{E}[X | Y = y] - y\\
+y + \sigma^2 \nabla_y \log f_Y(y) & = \mathbb{E}[X | Y = y].
 \end{align}
 ```
 Now we have
@@ -51,10 +69,10 @@ Now we have
 \frac{\mathbb{E}[Y|Y=y] - \mathbb{E}[X|Y=y]}{\sigma}\\
 & =
 \frac{
-y - (y + \sigma^2 \nabla_y f_Y(y))
+y - (y + \sigma^2 \nabla_y \log f_Y(y))
 }{\sigma}\\
 & =
--\sigma \nabla_y f_Y(y).
+-\sigma \nabla_y \log f_Y(y).
 \end{align}
 ```
 """)
@@ -62,12 +80,12 @@ y - (y + \sigma^2 \nabla_y f_Y(y))
 # ╔═╡ df9e106b-16c3-4605-b5f6-0a4e82dd4b3b
 HAlign(md"""
 From Tweedie's formula, ``\epsilon`` is estimated to be
-``-\sigma \nabla_y f_Y(y)``.
+``-\sigma \nabla_y \log f_Y(y)``.
 
 **Sampler** *Langevin dynamics*:
 ```math
 \begin{multline}
-y_{k+1} = y_k + \delta_k \nabla_y f_Y(y_k) + \sqrt{2\delta_k} w_k\\
+y_{k+1} = y_k + \delta_k \nabla_y \log f_Y(y_k) + \sqrt{2\delta_k} w_k\\
 \text{where } \epsilon_k \sim \mathcal{N}(0, 1)
 \end{multline}
 ```
@@ -84,7 +102,7 @@ frametitle("Score matching")
 md"""
 Diffusion models are also known as *energy-based models* and then *score-matching*.
 
-For **fixed** ``\sigma``, the matching is ``\epsilon_\theta(y) \approx \mathbb{E}[\mathcal{E}|X + \sigma \mathcal{E} = y] = -\sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)``.
+For **fixed** ``\sigma``, the matching is ``\epsilon_\theta(y) \approx \mathbb{E}[\mathcal{E}|X + \sigma \mathcal{E} = y] = -\sigma \nabla_y \log f_{X+\sigma\mathcal{E}}(y)``.
 
 **Training**: sample ``x`` / pick ``x`` in dataset, sample ``\varepsilon``, update ``\theta`` to minimize (e.g., using gradient descent), the loss:
 ```math
@@ -103,8 +121,8 @@ frametitle("Issue with small variance")
 md"""
 If ``\sigma`` is too small then the support of ``X + \sigma \mathcal{E}`` may not cover the whole state space → inaccurate ``\epsilon_\theta(y)`` in these parts. More formally, the loss is the Fisher divergence:
 ```math
-\mathbb{E}[\|\epsilon_\theta(y) + \sigma \nabla_y f_Y(y)\|^2]
-= \int_y f_Y(y) \|s_\theta(y) + \sigma \nabla_y f_Y(y)\|^2 \,\text{d}y
+\mathbb{E}[\|\epsilon_\theta(y) + \sigma \nabla_y \log f_Y(y)\|^2]
+= \int_y f_Y(y) \|s_\theta(y) + \sigma \nabla_y \log f_Y(y)\|^2 \,\text{d}y
 ```
 so it is inaccurate for ``y`` such that ``f_Y(y)`` is too small. [Image source](https://yang-song.net/blog/2021/score/).
 """
@@ -128,7 +146,7 @@ frametitle("Variance-dependent score")
 
 # ╔═╡ c3af23f7-8919-4e27-a97e-6013038b8d8c
 HAlign(md"""
-The matching is ``\epsilon_\theta(y\textcolor{red}{, \sigma}) \approx -\sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)``.
+The matching is ``\epsilon_\theta(y\textcolor{red}{, \sigma}) \approx -\sigma \nabla_y \log f_{X+\sigma\mathcal{E}}(y)``.
 
 **Training**: sample ``x`` / pick ``x`` in dataset, sample ``\textcolor{red}{\sigma, }\varepsilon``, update ``\theta`` to minimize (e.g., using gradient descent), the loss:
 ```math
@@ -470,7 +488,7 @@ PrettyTables = "~2.4.0"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.1"
+julia_version = "1.11.2"
 manifest_format = "2.0"
 project_hash = "174c71434e9f26a086422d879d9ed7fa3081c082"
 
