@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.0
+# v0.19.46
 
 using Markdown
 using InteractiveUtils
@@ -408,13 +408,13 @@ Illustrated on the right from $(cite("bahdanau2016Neural", "Figure 3(a)")).
 # ╔═╡ d014e6aa-92f6-4ca1-be47-516565d1bb20
 HAlign((
 	md"""
-Different heads to focus on different aspects:
+Heads focus on different aspects. Their outputs are **combined** with ``W^O \in \mathbb{R}^{d_\text{emb} \times hd_v}``:
 ```math
 \begin{align}
 	\text{head}_j & = \text{Attention}(W_j^VV, W_j^KK, W_j^QQ)\\
 	\text{MultiHead}(V, K, Q)
 	& =
-	W^O\text{Concat}(\text{head}_1, \ldots, \text{head}_h)
+	W^O\text{vcat}(\text{head}_1, \ldots, \text{head}_h)
 \end{align}
 ```
 See $(cite("vaswani2017Attentiona", "Figure 2")) on the right.
@@ -425,7 +425,7 @@ Similarly, in the masked case:
 	\text{head}_j & = \text{Masked-Attention}(W_j^VV, W_j^KK, W_j^QQ)\\
 	\text{Masked-MultiHead}&(V, K, Q)
 	=
-	W^O\text{Concat}(\text{head}_1, \ldots, \text{head}_h)
+	W^O\text{vcat}(\text{head}_1, \ldots, \text{head}_h)
 \end{align}
 ```
 """,
