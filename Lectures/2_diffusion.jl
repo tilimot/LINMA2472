@@ -135,7 +135,7 @@ frametitle("Issue with large variance")
 
 # ╔═╡ e33b16ec-4526-4dbe-affa-3e68aa508ab8
 md"""
-If ``\sigma`` is too large then ``\epsilon_\theta(y) \approx  -\sigma \nabla_y f_{X+\sigma\mathcal{E}}(y)`` everywhere but the distribution ``Y \sim X + \sigma \mathcal{E}`` is too noisy, less specific to ``X`` (small signal to noise ratio). [Image source](https://yang-song.net/blog/2021/score/).
+If ``\sigma`` is too large then ``\epsilon_\theta(y) \approx  -\sigma \nabla_y \log f_{X+\sigma\mathcal{E}}(y)`` everywhere but the distribution ``Y \sim X + \sigma \mathcal{E}`` is too noisy, less specific to ``X`` (small signal to noise ratio). [Image source](https://yang-song.net/blog/2021/score/).
 """
 
 # ╔═╡ 06e194ec-42dc-46aa-8935-86c4ed04b7c8
