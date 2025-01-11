@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.46
+# v0.20.0
 
 using Markdown
 using InteractiveUtils
@@ -350,7 +350,7 @@ Illustrated on the right $(cite("goodfellow2016Deep", "Figure 10.3")).
 
 RNNs as language model showcased in $(cite("mikolov2010Recurrent")).
 
-**Issue**: Time and space complexity proportional to ``n_\text{ctx}`` and **cannot parallelize** to speed up.
+**Issue**: Training time and space complexity is proportional to ``n_\text{ctx}`` and **cannot parallelize** to speed up.
 """,
 img("RNN")
 )
