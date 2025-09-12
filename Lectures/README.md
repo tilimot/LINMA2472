@@ -1,4 +1,4 @@
-# Large Language Models and Diffusion Models
+# Lectures
 
 [<img src="https://plutojl.org/assets/favicon.svg" height="20"/>![](https://img.shields.io/badge/Notebooks-View-blue.svg)<img src="https://plutojl.org/assets/favicon.svg" height="20"/>](https://blegat.github.io/LINMA2472/)
 

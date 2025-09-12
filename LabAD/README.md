@@ -1,4 +1,4 @@
-# LINMA2472 - Algorithms in data science
+# Automatic Differentiation Labs
 
 | Week  | Day        | Room   | File             |
 |-------|------------|--------|------------------|
