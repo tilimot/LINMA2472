@@ -10,9 +10,6 @@ using Graphs, GraphPlot, Printf
 # ╔═╡ f1ba3d3c-d0a5-4290-ab73-9ce34bd5e5f6
 using Plots, PlutoUI, PlutoUI.ExperimentalLayout, HypertextLiteral, PlutoTeachingTools
 
-# ╔═╡ 48be2f5d-945c-4c1b-87b0-5dac272040e6
-include("utils.jl")
-
 # ╔═╡ 40baa108-eb68-433f-9917-ac334334f198
 @htl("""
 <p align=center style=\"font-size: 40px;\">Automatic Differentiation</p><p align=right><i>Benoît Legat</i></p>
@@ -35,7 +32,7 @@ We can compute partial derivatives in different ways:
 """
 
 # ╔═╡ e46fb3ff-b26f-4efb-aaa1-760e80017797
-frametitle("Chain rule")
+md"# Chain rule"
 
 # ╔═╡ af404768-0663-4bc3-81dd-6931b3a486be
 md"""
@@ -59,10 +56,7 @@ t_{k} & = f_k(s_{k-1}) \cdot t_{k-1} & r_k & = r_{k+1} \cdot f_k(s_{k-1})\\
 """
 
 # ╔═╡ 2ae277d5-8be4-4ea9-a3fc-8ad601577c3a
-frametitle("Forward Differentiation")
-
-# ╔═╡ fa20b8db-9ac7-490d-b8d8-8d57469d24e4
-img("Blondel_Rouvet_Figure_8_1")
+md"# Forward Differentiation"
 
 # ╔═╡ 586c2c6b-4a53-46d5-924b-c843e4c09859
 aside(md"Figure 8.1", v_offset = -150)
@@ -87,9 +81,6 @@ Base.:*(x::Dual{T}, y::Dual{T}) where {T} = Dual(x.value * y.value, x.value * y.
 
 # ╔═╡ 85fc455c-36cf-4a4c-aa64-84a827884693
 md"# Reverse differentiation"
-
-# ╔═╡ cc2a09a1-c949-4b09-816b-b49ba7ca8983
-img("Blondel_Rouvet_Figure_8_3")
 
 # ╔═╡ 277bd2ce-fa7f-4288-be8a-0ddd8f23635c
 md"""
@@ -118,45 +109,14 @@ hbox([
 """,
 ])
 
-# ╔═╡ 8deca676-8a0b-41eb-b7a0-4d65e1158b0b
-qa(md"Apply this to ``f_3(s_1, s_2) = s_1 + s_2``, ``f_1(x) = x`` and ``f_2(x) = x^2``",
-hbox([
-	md"""
-#### Forward
-
-* ``\partial x / \partial x = 1``
-* ``\partial s_1 / \partial x = 1 \cdot 1 = 1``
-* ``\partial s_2 / \partial x = 2 \cdot 1 = 2``
-* ``\partial s_3 / \partial x = 1 \cdot 1 \cdot 1 + 1 \cdot 2 = 3``
-""",
-	Div(html" ", style = Dict("flex-grow" => "1")),
-md"""
-#### Reverse
-
-* Initialize ``\partial s_3 / \partial s_1 = \partial s_3 / \partial s_2 = \partial s_3 / \partial x = 1``
-* First part: ``\partial s_3/\partial s_1 \mathrel{\raise{0.19ex}{\scriptstyle+}} = 1``
-  - ``\partial s_3 / \partial x \mathrel{\raise{0.19ex}{\scriptstyle+}} = 1 \cdot 1``
-* Second part: ``\partial s_3/\partial s_1 \mathrel{\raise{0.19ex}{\scriptstyle+}} = 1``
-  - ``\partial s_3 / \partial x \mathrel{\raise{0.19ex}{\scriptstyle+}} = 1 \cdot 2``
-* The result is ``\partial s_3 / \partial x = 3``.
-"""]))
-
 # ╔═╡ 885bc5c9-aefc-4d8a-a4da-6062c64eaa41
 md"## Forward tangents"
-
-# ╔═╡ d2b8fa5c-c604-4093-a2dd-5c95f2eaa676
-img("Blondel_Rouvet_Figure_8_7")
 
 # ╔═╡ 5aff8e66-787d-4dc5-a9b1-0fdec25ce0f0
 md"## Reverse tangents"
 
-# ╔═╡ d1dbdd3f-9782-4fba-8c4e-819f152e6c30
-img("Blondel_Rouvet_Figure_8_8")
-
-# ╔═╡ 83ef86e0-bcfb-42ee-a574-16758606423a
-qa(md"Why is ``\partial\text{dup}^*`` a sum ?", md"The Jacobian is ``\partial\text{dup} = \begin{bmatrix}
-1\\1\\1\end{bmatrix}``. In reverse mode, we multiply by the adjoint (why ? See next lecture!) of the Jacobian (here the transpose) ``\partial\text{dup}^* = \begin{bmatrix}
-1 & 1 & 1\end{bmatrix}``. Left-multiplying a vector with a row vector of ones results in its sum.")
+# ╔═╡ 90850509-463d-44c7-88ae-4406aebd4be1
+md"## Expression graph"
 
 # ╔═╡ 7f75e3f3-c4e2-402d-be7b-336a4f65042a
 md"""# Comparison
@@ -165,26 +125,11 @@ md"""# Comparison
 * Reverse mode of ``f(x)`` computes Vector-Jacobian Product (VJP) ``v^\top J_f(x)`` or in other words ``J_v(x)^\top v``
 """
 
-# ╔═╡ bab3a3cb-0ad2-4ea5-a15c-6593fc22e496
-qa(md"How can we compute the full Jacobian ?", md"By computing a JVP (resp. VJP) with a one-hot vector, we get a column (resp. row) of the jacobian.")
-
-# ╔═╡ c73f79c6-a28f-4c7a-89e5-8d70a245a210
-qa(md"When is each mode faster than the other one to compute the full Jacobian ?", md"If ``f: \mathbb{R}^n \to \mathbb{R}^m``, then computing the full Jacobian requires ``n`` JVP or ``m`` VJP. So
-* if ``n \gg m``, then reverse mode is faster;
-* if ``m \gg n``, then forward mode is faster;
-* if ``m \approx n``, then it's a close call.")
-
 # ╔═╡ f4d1ee7c-4a01-4b2d-aa9b-ec41ceb0ad0f
 md"## Memory usage of forward mode"
 
-# ╔═╡ e8c60922-5bbf-45b5-8311-18c8f8525623
-img("Blondel_Rouvet_Figure_8_2")
-
 # ╔═╡ 73ba544c-616a-4db1-b91d-0b20a7b8924b
 md"## Memory usage of reverse mode"
-
-# ╔═╡ 2f8baccc-19d1-44d6-b71f-0243fd8696ba
-img("Blondel_Rouvet_Figure_8_4")
 
 # ╔═╡ dc4feb58-d2cf-4a97-aaed-7f4593fc9732
 md"""
@@ -247,6 +192,133 @@ md"## Utils"
 
 # ╔═╡ dad5cba4-9bc6-47c3-a932-f2cc496b0f40
 import MLJBase, Colors, Tables
+
+# ╔═╡ cbfc0129-9361-4edb-a467-1456a1f3aeae
+begin
+struct Path
+    path::String
+end
+
+function imgpath(path::Path)
+    file = path.path
+    if !('.' in file)
+        file = file * ".png"
+    end
+    return joinpath(joinpath(@__DIR__, "images", file))
+end
+
+function img(path::Path, args...; kws...)
+    return PlutoUI.LocalResource(imgpath(path), args...)
+end
+
+struct URL
+    url::String
+end
+
+function save_image(url::URL, html_attributes...; name = split(url.url, '/')[end], kws...)
+    path = joinpath("cache", name)
+    return PlutoTeachingTools.RobustLocalResource(url.url, path, html_attributes...), path
+end
+
+function img(url::URL, args...; kws...)
+    r, _ = save_image(url, args...; kws...)
+    return r
+end
+
+function img(file::String, args...; kws...)
+    if startswith(file, "http")
+        img(URL(file), args...; kws...)
+    else
+        img(Path(file), args...; kws...)
+    end
+end
+end
+
+# ╔═╡ fa20b8db-9ac7-490d-b8d8-8d57469d24e4
+img("Blondel_Rouvet_Figure_8_1")
+
+# ╔═╡ cc2a09a1-c949-4b09-816b-b49ba7ca8983
+img("Blondel_Rouvet_Figure_8_3")
+
+# ╔═╡ d2b8fa5c-c604-4093-a2dd-5c95f2eaa676
+img("Blondel_Rouvet_Figure_8_7")
+
+# ╔═╡ d1dbdd3f-9782-4fba-8c4e-819f152e6c30
+img("Blondel_Rouvet_Figure_8_8")
+
+# ╔═╡ 673c3acc-0009-416a-91bb-f57c1fe8eefc
+img("Blondel_Rouvet_Figure_4_3")
+
+# ╔═╡ e8c60922-5bbf-45b5-8311-18c8f8525623
+img("Blondel_Rouvet_Figure_8_2")
+
+# ╔═╡ 2f8baccc-19d1-44d6-b71f-0243fd8696ba
+img("Blondel_Rouvet_Figure_8_4")
+
+# ╔═╡ 81deb227-a822-4857-a584-a51cc8ff51f4
+begin
+function qa(question, answer)
+    return @htl("<details><summary>$question</summary>$answer</details>")
+end
+function _inline_html(m::Markdown.Paragraph)
+    return sprint(Markdown.htmlinline, m.content)
+end
+function qa(question::Markdown.MD, answer)
+    # `html(question)` will create `<p>` if `question.content[]` is `Markdown.Paragraph`
+    # This will print the question on a new line and we don't want that:
+    h = HTML(_inline_html(question.content[]))
+    return qa(h, answer)
+end
+end
+
+# ╔═╡ 8deca676-8a0b-41eb-b7a0-4d65e1158b0b
+qa(md"Apply this to ``f_3(s_1, s_2) = s_1 + s_2``, ``f_1(x) = x`` and ``f_2(x) = x^2``",
+hbox([
+	md"""
+#### Forward
+
+* ``\partial x / \partial x = 1``
+* ``\partial s_1 / \partial x = 1 \cdot 1 = 1``
+* ``\partial s_2 / \partial x = 2 \cdot 1 = 2``
+* ``\partial s_3 / \partial x = 1 \cdot 1 \cdot 1 + 1 \cdot 2 = 3``
+""",
+	Div(html" ", style = Dict("flex-grow" => "1")),
+md"""
+#### Reverse
+
+* Initialize ``\partial s_3 / \partial s_1 = \partial s_3 / \partial s_2 = \partial s_3 / \partial x = 1``
+* First part: ``\partial s_3/\partial s_1 \mathrel{\raise{0.19ex}{\scriptstyle+}} = 1``
+  - ``\partial s_3 / \partial x \mathrel{\raise{0.19ex}{\scriptstyle+}} = 1 \cdot 1``
+* Second part: ``\partial s_3/\partial s_1 \mathrel{\raise{0.19ex}{\scriptstyle+}} = 1``
+  - ``\partial s_3 / \partial x \mathrel{\raise{0.19ex}{\scriptstyle+}} = 1 \cdot 2``
+* The result is ``\partial s_3 / \partial x = 3``.
+"""]))
+
+# ╔═╡ 83ef86e0-bcfb-42ee-a574-16758606423a
+qa(md"Why is ``\partial\text{dup}^*`` a sum ?", md"The Jacobian is ``\partial\text{dup} = \begin{bmatrix}
+1\\1\\1\end{bmatrix}``. In reverse mode, we multiply by the adjoint (why ? See next lecture!) of the Jacobian (here the transpose) ``\partial\text{dup}^* = \begin{bmatrix}
+1 & 1 & 1\end{bmatrix}``. Left-multiplying a vector with a row vector of ones results in its sum.")
+
+# ╔═╡ 28df733e-7db9-4e78-9121-52d8e6ca7591
+qa(md"Can this directed graph have cycles ?", md"No, it is a Directed Acyclic Graph. (DAG)")
+
+# ╔═╡ 626abc7c-87ef-4838-9f0a-294cf0a4be6a
+qa(md"What happens if ``f_4`` is handled before ``f_5`` in the backward pass ?",
+md"""
+``\partial f / \partial s_4`` is the sum of its contribution from ``f_5`` and ``f_7``. We must wait for ``f_5`` to be handled before we turn to ``f_4``.
+""")
+
+# ╔═╡ 6c60f9ca-ba04-41e2-9625-c9e10f1a853b
+qa(md"How to prevent this from happening ?", md"We should first compute a [*topological ordering*](https://en.wikipedia.org/wiki/Topological_sorting) and then follow this order.")
+
+# ╔═╡ bab3a3cb-0ad2-4ea5-a15c-6593fc22e496
+qa(md"How can we compute the full Jacobian ?", md"By computing a JVP (resp. VJP) with a one-hot vector, we get a column (resp. row) of the jacobian.")
+
+# ╔═╡ c73f79c6-a28f-4c7a-89e5-8d70a245a210
+qa(md"When is each mode faster than the other one to compute the full Jacobian ?", md"If ``f: \mathbb{R}^n \to \mathbb{R}^m``, then computing the full Jacobian requires ``n`` JVP or ``m`` VJP. So
+* if ``n \gg m``, then reverse mode is faster;
+* if ``m \gg n``, then forward mode is faster;
+* if ``m \approx n``, then it's a close call.")
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2075,7 +2147,7 @@ version = "1.9.2+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═40baa108-eb68-433f-9917-ac334334f198
+# ╟─40baa108-eb68-433f-9917-ac334334f198
 # ╟─77a7de14-87d2-11ef-21ef-937b8239db5b
 # ╟─e46fb3ff-b26f-4efb-aaa1-760e80017797
 # ╟─af404768-0663-4bc3-81dd-6931b3a486be
@@ -2097,6 +2169,11 @@ version = "1.9.2+0"
 # ╟─5aff8e66-787d-4dc5-a9b1-0fdec25ce0f0
 # ╟─d1dbdd3f-9782-4fba-8c4e-819f152e6c30
 # ╟─83ef86e0-bcfb-42ee-a574-16758606423a
+# ╟─90850509-463d-44c7-88ae-4406aebd4be1
+# ╟─673c3acc-0009-416a-91bb-f57c1fe8eefc
+# ╟─28df733e-7db9-4e78-9121-52d8e6ca7591
+# ╟─626abc7c-87ef-4838-9f0a-294cf0a4be6a
+# ╟─6c60f9ca-ba04-41e2-9625-c9e10f1a853b
 # ╟─7f75e3f3-c4e2-402d-be7b-336a4f65042a
 # ╟─bab3a3cb-0ad2-4ea5-a15c-6593fc22e496
 # ╟─c73f79c6-a28f-4c7a-89e5-8d70a245a210
@@ -2119,6 +2196,7 @@ version = "1.9.2+0"
 # ╠═dad5cba4-9bc6-47c3-a932-f2cc496b0f40
 # ╠═9f027cde-dba0-4da5-8c42-5fa79b3929d6
 # ╠═f1ba3d3c-d0a5-4290-ab73-9ce34bd5e5f6
-# ╠═48be2f5d-945c-4c1b-87b0-5dac272040e6
+# ╟─cbfc0129-9361-4edb-a467-1456a1f3aeae
+# ╟─81deb227-a822-4857-a584-a51cc8ff51f4
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
