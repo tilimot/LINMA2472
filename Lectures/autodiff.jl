@@ -41,7 +41,7 @@ The chain rule gives
 ```math
 f'(x) = f_3'(f_2(f_1(x))) \cdot f_2'(f_1(x)) \cdot f_1'(x).
 ```
-Let's define $s_0 = x$ and $s_{k} = f(x_{k-1})$, we now have:
+Let's define $s_0 = x$ and $s_{k} = f_k(s_{k-1})$, we now have:
 ```math
 f'(x) = f_3'(s_2) \cdot f_2'(s_1) \cdot f_1'(s_0).
 ```
@@ -50,7 +50,7 @@ Two choices here:
 \begin{align*}
 & \text{Forward} & & \text{Reverse}\\
 t_0 & = 1 & r_3 & = 1\\
-t_{k} & = f_k(s_{k-1}) \cdot t_{k-1} & r_k & = r_{k+1} \cdot f_k(s_{k-1})\\
+t_{k} & = f_k'(s_{k-1}) \cdot t_{k-1} & r_k & = r_{k+1} \cdot f_{k+1}'(s_{k})\\
 \end{align*}
 ```
 """
@@ -66,8 +66,8 @@ md"## Implementation"
 
 # ╔═╡ 45051873-3f0d-49b0-a9a6-bfde240594aa
 struct Dual{T}
-	value::T
-	derivative::T
+	value::T # s_k
+	derivative::T # t_k
 end
 
 # ╔═╡ 3803804a-f44d-4f56-bd59-fb1401d8fb9e
@@ -78,6 +78,15 @@ Base.:*(x::Dual{T}, y::Dual{T}) where {T} = Dual(x.value * y.value, x.value * y.
 
 # ╔═╡ 66d6ab94-0da3-4346-9356-a30ab65e04f2
 -Dual(1, 2) * Dual(3, 4)
+
+# ╔═╡ 8b8682e4-8adb-4fb1-a013-054b1d9750d7
+f_1(x, y) = x * y
+
+# ╔═╡ e211118d-eba8-467e-ae4a-665f1df02934
+f_2(s1) = -s1
+
+# ╔═╡ bc93fb96-1097-4b22-a077-558f5662efec
+(f_2 ∘ f_1)(Dual(1, 2), Dual(3, 4))
 
 # ╔═╡ 85fc455c-36cf-4a4c-aa64-84a827884693
 md"# Reverse differentiation"
@@ -98,14 +107,17 @@ hbox([
 	md"""
 #### Forward
 
-* Given ``\partial s_1/\partial x`` and ``\partial s_2/\partial x``
-* Computes ``\partial f_3/\partial x``""",
+$$t_3 = \frac{\partial s_3}{\partial s_1} t_1 + \frac{\partial s_3}{\partial s_2} t_2$$
+
+* Given ``s_1, s_2``, computes ``\frac{\partial s_3}{\partial s_1}(s_1, s_2)`` and ``\frac{\partial s_3}{\partial s_2}(s_1, s_2)``
+* Given ``t_1`` and ``t_2``, computes ``\partial f_3/\partial x``""",
 	Div(html" ", style = Dict("flex-grow" => "1")),
 	md"""
 #### Reverse
-* Given ``\partial s_K / \partial s_3``
-* **Add** ``(\partial s_K / \partial s_3) \cdot (\partial s_3 / \partial s_1) `` to  ``\partial s_K / \partial s_1``
-* **Add** ``(\partial s_K / \partial s_3) \cdot (\partial s_3 / \partial s_2) `` to  ``\partial s_K / \partial s_2``
+* Given ``s_1, s_2``, computes ``\frac{\partial s_3}{\partial s_1}(s_1, s_2)`` and ``\frac{\partial s_3}{\partial s_2}(s_1, s_2)``
+* Given ``r_3 = \partial s_K / \partial s_3``
+  - **Add** ``r_3 \cdot (\partial s_3 / \partial s_1) `` to  ``r_1``
+  - **Add** ``r_3 \cdot (\partial s_3 / \partial s_2) `` to  ``r_2``
 """,
 ])
 
@@ -2159,6 +2171,9 @@ version = "1.9.2+0"
 # ╠═3803804a-f44d-4f56-bd59-fb1401d8fb9e
 # ╠═63bdc7f5-89a5-4061-9e42-6588e4cd96c6
 # ╠═66d6ab94-0da3-4346-9356-a30ab65e04f2
+# ╠═8b8682e4-8adb-4fb1-a013-054b1d9750d7
+# ╠═e211118d-eba8-467e-ae4a-665f1df02934
+# ╠═bc93fb96-1097-4b22-a077-558f5662efec
 # ╟─85fc455c-36cf-4a4c-aa64-84a827884693
 # ╟─cc2a09a1-c949-4b09-816b-b49ba7ca8983
 # ╟─277bd2ce-fa7f-4288-be8a-0ddd8f23635c
