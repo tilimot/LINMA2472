@@ -1,5 +1,5 @@
 """
-    struct Flatten{A<:AbstractArray{Float64}} <: AbstractVector{Float64}
+    struct Flatten{A}
         components::Vector{A}
     end
 
@@ -53,6 +53,13 @@ struct Flatten{A}
         return Flatten{A}(components)
     end
 end
+# If we make a `Flatten` with only one argument and this argument is a vector,
+# then we would expect `Flatten(args...)` to be called but it's rather
+# `Flatten(::Vector)` that will be called. This additional method below fixes
+# this.
+function Flatten(components::Vector{<:Number})
+    return Flatten([components])
+end
 Flatten(args...) = Flatten(collect(args))
 Base.length(v::Flatten) = sum(length, v.components)
 Base.size(v::Flatten) = (length(v),)
@@ -62,6 +69,12 @@ Base.eachindex(v::Flatten) = Base.axes1(v)
 #Base.eltype(::Type{Flatten{A}}) where {A} = eltype(A)
 #Base.eltype(v::Flatten) = eltype(typeof(v))
 Base.IteratorEltype(::Type{<:Flatten}) = Base.EltypeUnknown()
+# `Flatten` is not a subtype of `AbstractVector` so the fallback for
+# `reduce` does not work. Here we give up on the `Flatten` structure
+# because we have no-way to represent a Matrix/2D Flatten.
+function Base.reduce(::typeof(hcat), v::Vector{<:Flatten})
+    reduce(hcat, collect.(v))
+end
 
 function Base.iterate(A::Flatten, state=(eachindex(A),))
     y = iterate(state...)
