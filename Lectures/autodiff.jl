@@ -146,14 +146,6 @@ md"## Memory usage of reverse mode"
 # ╔═╡ dc4feb58-d2cf-4a97-aaed-7f4593fc9732
 md"""
 # Discontinuity
-
-The function ``|x|`` is not differentiable at ``x = 0``.
-If we approach from the left (that is, ``x < 0``, the function is ``-x``), then the derivative is ``-1``.  
-If we approach from the right (that is, ``x > 0``, the function is ``x``), then the derivative is ``1``.  
-There is no valid gradient!
-
-However, any number between ``-1`` and ``1`` is a valid **subgradient**!  
-Whereas the gradient is the normal to the **unique** tangent, the subgradient is an element of the **tangent cone**. Which one should we return ?
 """
 
 # ╔═╡ 2b631fcd-2703-42df-8a75-2fdff64b3311
@@ -247,25 +239,25 @@ end
 end
 
 # ╔═╡ fa20b8db-9ac7-490d-b8d8-8d57469d24e4
-img("Blondel_Rouvet_Figure_8_1")
+img("Blondel_Rouvet_Figure_8_1", :height => 250)
 
 # ╔═╡ cc2a09a1-c949-4b09-816b-b49ba7ca8983
-img("Blondel_Rouvet_Figure_8_3")
+img("Blondel_Rouvet_Figure_8_3", :height => 250)
 
 # ╔═╡ d2b8fa5c-c604-4093-a2dd-5c95f2eaa676
-img("Blondel_Rouvet_Figure_8_7")
+img("Blondel_Rouvet_Figure_8_7", :height => 250)
 
 # ╔═╡ d1dbdd3f-9782-4fba-8c4e-819f152e6c30
-img("Blondel_Rouvet_Figure_8_8")
+img("Blondel_Rouvet_Figure_8_8", :height => 250)
 
 # ╔═╡ 673c3acc-0009-416a-91bb-f57c1fe8eefc
-img("Blondel_Rouvet_Figure_4_3")
+img("Blondel_Rouvet_Figure_4_3", :height => 250)
 
 # ╔═╡ e8c60922-5bbf-45b5-8311-18c8f8525623
-img("Blondel_Rouvet_Figure_8_2")
+img("Blondel_Rouvet_Figure_8_2", :height => 250)
 
 # ╔═╡ 2f8baccc-19d1-44d6-b71f-0243fd8696ba
-img("Blondel_Rouvet_Figure_8_4")
+img("Blondel_Rouvet_Figure_8_4", :height => 300)
 
 # ╔═╡ 81deb227-a822-4857-a584-a51cc8ff51f4
 begin
@@ -332,6 +324,17 @@ qa(md"When is each mode faster than the other one to compute the full Jacobian ?
 * if ``m \gg n``, then forward mode is faster;
 * if ``m \approx n``, then it's a close call.")
 
+# ╔═╡ 74063eb5-be06-466a-a2f1-e266c35295ea
+qa(md"Is the function ``|x|`` is differentiable at ``x = 0`` ?.", md"No, if we approach from the left (that is, ``x < 0``, the function is ``-x``), then the derivative is ``-1``.
+If we approach from the right (that is, ``x > 0``, the function is ``x``), then the derivative is ``1``.
+There is no valid gradient!")
+
+# ╔═╡ 88534196-9f4a-430c-a534-805177ba718d
+qa(md"What about returning a convex combination of the derivative from the left and right ?", md"Any number between ``-1`` and ``1`` is a valid **subgradient**!
+Whereas the gradient is the normal to the **unique** tangent, the subgradient is an element of the **tangent cone**, depicted below. For convex functions, the notion of subgradient appropriately generalizes the notion of gradient for nonsmooth functions.
+
+Note that the notion of subgradient is not defined for nonconvex functions. So we may say that we compute the local subgradient of some local nonsmooth ``f_i`` but we cannot deduce from it that the resulting vector is a subgradient of ``f`` if ``f`` is nonconvex.")
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
@@ -362,7 +365,7 @@ Tables = "~1.12.1"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.6"
+julia_version = "1.11.7"
 manifest_format = "2.0"
 project_hash = "454bbdb433ccd04ea0ce0cfdbe47b2a75376c831"
 
@@ -2197,7 +2200,9 @@ version = "1.9.2+0"
 # ╟─73ba544c-616a-4db1-b91d-0b20a7b8924b
 # ╟─2f8baccc-19d1-44d6-b71f-0243fd8696ba
 # ╟─dc4feb58-d2cf-4a97-aaed-7f4593fc9732
+# ╟─74063eb5-be06-466a-a2f1-e266c35295ea
 # ╟─607000ef-fb7f-4204-b543-3cb6bb75ed71
+# ╟─88534196-9f4a-430c-a534-805177ba718d
 # ╟─2b631fcd-2703-42df-8a75-2fdff64b3311
 # ╠═9988fc4a-cedc-499b-a334-048cc13de000
 # ╠═ceaeb177-7a6a-4062-9659-56bebce0e77b
