@@ -73,7 +73,7 @@ Base.:-(x::Dual{T}) where {T} = Dual(-x.value, -x.derivative)
 # ╔═╡ 63bdc7f5-89a5-4061-9e42-6588e4cd96c6
 Base.:*(x::Dual{T}, y::Dual{T}) where {T} = Dual(x.value * y.value, x.value * y.derivative + x.derivative * y.value)
 
-# ╔═╡ 66d6ab94-0da3-4346-9356-a30ab65e04f2
+# ╔═╡ 4174d41c-877b-4878-b76e-442991907af0
 -Dual(1, 2) * Dual(3, 4)
 
 # ╔═╡ 8b8682e4-8adb-4fb1-a013-054b1d9750d7
@@ -193,10 +193,10 @@ hbox([md"""
 ```math
 \begin{align*}
 S_{0} & = X\\
-S_{2k-1} & = W_k S_{2k-2} + b_{k}\\
+S_{2k-1} & = W_k S_{2k-2} + b_{k} \mathbf{1}^\top\\
 S_{2k} & = \sigma(S_{2k-1})\\
 S_{2H+1} & = W_{k+1} S_{2H}\\
-S_{2H+2} & = \text{loss}(S_{2H+1} - Y)\\
+S_{2H+2} & = \ell(S_{2H+1}; Y)\\
 \end{align*}
 ```
 """,
@@ -207,10 +207,10 @@ S_{2H+2} & = \text{loss}(S_{2H+1} - Y)\\
 ```math
 \begin{align*}
 S_{0} & = X\\
-S_{2k-1} & = S_{2k-2} W_k + b_{k}^\top\\
+S_{2k-1} & = S_{2k-2} W_k + \mathbf{1} b_{k}^\top\\
 S_{2k} & = \sigma(S_{2k-1})\\
 S_{2H+1} & = S_{2H} W_{k+1}\\
-S_{2H+2} & = \text{loss}(S_{2H+1} - Y)\\
+S_{2H+2} & = \ell(S_{2H+1}; Y)\\
 \end{align*}
 ```
 """])
@@ -369,7 +369,7 @@ img("Blondel_Rouvet_Figure_8_3", :height => 250)
 img("Blondel_Rouvet_Figure_8_7", :height => 250)
 
 # ╔═╡ d1dbdd3f-9782-4fba-8c4e-819f152e6c30
-img("Blondel_Rouvet_Figure_8_8", :height => 250)
+img("Blondel_Rouvet_Figure_8_8", :height => 200)
 
 # ╔═╡ 673c3acc-0009-416a-91bb-f57c1fe8eefc
 img("Blondel_Rouvet_Figure_4_3", :height => 250)
@@ -474,6 +474,14 @@ Note that the notion of subgradient is not defined for nonconvex functions. So w
 # ╔═╡ c733ca7e-b57e-4218-9bd4-238ab5749143
 qa(md"How should we store the Jacobian in the forward pass to save it for the backward pass ?",
 md"The matrix ``I \otimes A`` is block diagonal with the same block repeated so the structure is crucial to exploit. Storing ``A`` is enough.")
+
+# ╔═╡ 33bdaa23-707e-4227-b936-c5d7aaf2c48e
+qa(md"How to prove that ``A^* = A^\top`` ?", md"""
+We have ``\langle X, Y \rangle = \text{tr}(XY^\top)`` ([why ?](https://en.wikipedia.org/wiki/Trace_(linear_algebra)#Trace_of_a_product)) so, using the [cyclic property of the trace](https://en.wikipedia.org/wiki/Trace_(linear_algebra)#Cyclic_property)
+```math
+\langle AX, Y \rangle = \text{tr}(AXY^\top) = \text{tr}(XY^\top A) = \text{tr}(X(A^\top Y)^\top) = \langle X, A^\top Y \rangle.
+```
+""")
 
 # ╔═╡ 7921c4c6-56b8-4c6f-a9be-cd1d9984680b
 qa(md"Let ``A(X) = B \odot X``, what is the adjoint ``A^*`` ?", md"""
@@ -1802,7 +1810,7 @@ version = "1.9.2+0"
 # ╠═45051873-3f0d-49b0-a9a6-bfde240594aa
 # ╠═3803804a-f44d-4f56-bd59-fb1401d8fb9e
 # ╠═63bdc7f5-89a5-4061-9e42-6588e4cd96c6
-# ╠═66d6ab94-0da3-4346-9356-a30ab65e04f2
+# ╠═4174d41c-877b-4878-b76e-442991907af0
 # ╠═8b8682e4-8adb-4fb1-a013-054b1d9750d7
 # ╠═e211118d-eba8-467e-ae4a-665f1df02934
 # ╠═bc93fb96-1097-4b22-a077-558f5662efec
@@ -1848,6 +1856,7 @@ version = "1.9.2+0"
 # ╟─29287c62-e892-448f-a9d5-12785ae4a02f
 # ╟─c733ca7e-b57e-4218-9bd4-238ab5749143
 # ╟─5f6529a1-4ace-4dd0-a7e2-f51070eab695
+# ╟─33bdaa23-707e-4227-b936-c5d7aaf2c48e
 # ╟─802edb3a-4809-4c50-920b-25f7bdc255dd
 # ╟─98db9022-f8ff-4af3-9c81-89cf09771928
 # ╟─7921c4c6-56b8-4c6f-a9be-cd1d9984680b
