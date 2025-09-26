@@ -10,8 +10,8 @@ Node(op, args, value) = Node(op, args, value, 0.0)
 Node(value) = Node(nothing, Node[], value)
 Base.zero(::Node) = Node(0)
 Base.:*(x::Node, y::Node) = Node(:*, [x, y], x.value * y.value)
-Base.:*(x::Node, y::Number) = Node(:*, [x], x.value * y)
-Base.:*(x::Number, y::Node) = Node(:*, [y], x * y.value)
+Base.:*(x::Node, y::Number) = x * Node(y)
+Base.:*(x::Number, y::Node) = Node(x) * y
 Base.:+(x::Node, y::Node) = Node(:+, [x, y], x.value + y.value)
 Base.:-(x::Node, y::Node) = Node(:-, [x, y], x.value - y.value)
 Base.:-(x::Node, y::Number) = x - Node(y)
@@ -51,8 +51,6 @@ function _backward!(f::Node)
 	elseif f.op == :* && length(f.args) == 2
 		f.args[1].derivative += f.derivative * f.args[2].value
 		f.args[2].derivative += f.derivative * f.args[1].value
-	elseif f.op == :* && length(f.args) == 1
-		f.args[1].derivative += f.derivative * f.value/ f.args[1].value
 	elseif f.op == :/ && length(f.args) == 2
 		f.args[1].derivative += f.derivative / f.args[2].value
 		f.args[2].derivative -= f.derivative * f.args[1].value / f.args[2].value^2
