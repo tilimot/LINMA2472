@@ -3,8 +3,10 @@
 
 ### Part 1: Vectorized AD
 
-Implement `reverse_vectorized.jl` using so that it passes the tests in `test.jl`.
+Implement `reverse_vectorized.jl` so that it passes the tests in `test.jl`.
 You should support computing the gradient of the functions tested in `test.jl` with a `Flatten` as input.
+Create one `VectNode` for each component of the `Flatten`, instead of one `Node` for each scalar (as was done in the lab).
+More precisely, while the AD of the lab only supports node of scalar value, your AD should support nodes for which the value can be arrays as well.
 Your AD implementation does not need to support any case that is not covered by the tests.
 The output `VectReverse.gradient` should match (up to reasonable accuracy, you can't fight floating point rounding errors) the output of `Forward.gradient` where `Forward` is the module defined in the solution of LabAD.
 
@@ -21,7 +23,7 @@ The output of `VectReverse.hvp` should match the output of `Forward.hvp` where `
 defined in the solution of LabAD.
 
 Benchmark your implementation and comment on the result, e.g.,
-What is the bottleneck in the computation of the gradient ?
+What is the bottleneck in the computation of the hessian-vector product ?
 Does this match your expectation/complexity analysis ?
 How would the memory and time requirement evolve with the size of the neural network ?
 How could this be reduced ?
@@ -55,7 +57,7 @@ Benchmark the gradient computation and the evolution of the loss training in tra
 
 > [!TIP]
 > To speed up the computation, you can use the GPU of your computer or of [the CECI cluster](https://github.com/blegat/LINMA2710?tab=readme-ov-file#ceci-cluster).
-> To use accelerate AD on GPU, simply convert the `Array`'s to [`CUDA.CuArray`'s (for NVIDIA GPUs)](https://github.com/JuliaGPU/CUDA.jl/) or
+> To accelerate AD on GPU, simply convert the `Array`'s to [`CUDA.CuArray`'s (for NVIDIA GPUs)](https://github.com/JuliaGPU/CUDA.jl/) or
 > [`AMDGPU.ROCArray`'s (for AMD GPUs)](https://github.com/JuliaGPU/AMDGPU.jl).
 > That will transfer the array to your GPU memory, all operations will then be done on the GPU until you convert it back to an `Array`.
 > This means that you should be able to differentiate on the GPU without the need to change the code of `VectReverse`.
