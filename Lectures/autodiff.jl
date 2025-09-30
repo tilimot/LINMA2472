@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.13
+# v0.20.18
 
 using Markdown
 using InteractiveUtils
@@ -303,6 +303,111 @@ While the product of matrices is associative, its computational complexity depen
 Let ``d_i \times d_{i - 1}`` be the dimension of ``J_i``.
 """
 
+# ╔═╡ 9bbbda1f-74a6-458b-a084-9d034d6c291f
+md"""
+# Second-order
+
+Consider a function ``f: \mathbb{R}^n \to \mathbb{R}``, we want to compute the Hessian ``\nabla^2 f(x)``, defined by
+```math
+(\nabla^2 f(x))_{ij} = \frac{\partial^2 f}{\partial x_i \partial x_j}
+```
+**Application**: Given the optimization problem:
+```math
+\begin{align}
+\min_x f(x)\\
+g_i(x) & = 0 \quad \forall i \in \{1, \ldots, m\}
+\end{align}
+```
+The Hessian of the Lagrangian ``\mathcal{L}(x, \lambda) = f(x) - \lambda_1 g_1(x) - \cdots - \lambda_m g_m(x)`` is obtained as
+```math
+\nabla_x^2 \mathcal{L}(x, \lambda) = \nabla^2 f(x) - \sum_{i=1}^m \lambda_i \nabla^2 g_i(x)
+```
+"""
+
+# ╔═╡ 03b6aa6d-7517-4906-9430-302516d0653b
+md"""
+## Second-order AD
+"""
+
+# ╔═╡ da5895e7-af99-46ff-9f53-36529d1ca456
+md"""
+## Chain rule
+
+```math
+\begin{align}
+\frac{\partial^2 (f_2 \circ f_1)}{\partial x_i \partial x_j}
+& =
+\frac{\partial}{\partial x_j} \left(\frac{\partial (f_2 \circ f_1)}{\partial x_i} \right)\\
+& =
+\frac{\partial}{\partial x_j} \left(J_{f_2}(f_1(x)) \frac{\partial f_1}{\partial x_i} \right)\\
+& =
+\frac{\partial}{\partial x_j} \left(J_{f_2}(f_1(x)) \frac{\partial f_1}{\partial x_i} \right)\\
+& =
+H_{f_2}(f_1(x))\left[\frac{\partial f_1}{\partial x_j}\right] \cdot \frac{\partial f_1}{\partial x_i} + 
+J_{f_2}(f_1(x)) \frac{\partial^2 f_1}{\partial x_i \partial x_j}
+\end{align}
+```
+
+Let ``J_k = J_{f_k}(s_{k-1})`` and ``H_{kj} = \frac{1}{\partial x_j} J_{f_k}(s_{k-1}) = \nabla^2 f_k(s_{k-1}) \frac{\partial s_{k-1}}{\partial x_j}``. It becomes
+```math
+\begin{align}
+\frac{\partial^2 (f_2 \circ f_1)}{\partial x_i \partial x_j}
+& =
+H_{2j} \frac{\partial f_1}{\partial x_i} + 
+J_2 \frac{\partial^2 f_1}{\partial x_i \partial x_j}
+\end{align}
+```
+"""
+
+# ╔═╡ 9415a6ed-c05e-4487-b0be-f342ec7424cd
+md"""
+## Forward on forward
+
+Given ``\text{Dual}(s_1, t_1)`` with ``s_1 = \text{Dual}(f_1(x), \frac{\partial f_1}{\partial x_j})`` and ``t_1 = \text{Dual}(\frac{\partial f_1}{\partial x_i}, \frac{\partial^2 f_1}{\partial x_i \partial x_j})``
+1. Compute ``s_2 = f_2(s_1) = (f_2(f_1(x)), J_{f_2}\frac{\partial f_1}{\partial x_j}) = ((f_2 \circ f_1)(x), \partial (f_2 \circ f_1) / \partial x_j)``
+2. Compute ``J_{f_2}(s_1)`` which gives ``\text{Dual}(J_2, H_{2j})``
+3. Compute
+```math
+\begin{align}
+J_{f_2}(s_1) \cdot t_1
+& =
+\text{Dual}(J_2, H_2) \cdot
+\text{Dual}(\frac{\partial f_1}{\partial x_i}, \frac{\partial^2 f_1}{\partial x_i \partial x_j})\\
+& =
+\text{Dual}(J_2 \frac{\partial f_1}{\partial x_i}, J_2 \frac{\partial^2 f_1}{\partial x_i \partial x_j} +
+H_{2j} \cdot \frac{\partial f_1}{\partial x_i})\\
+& =
+\text{Dual}(\frac{\partial (f_2 \circ f_1)}{\partial x_i}, \frac{\partial^2 (f_2 \circ f_1)}{\partial x_i \partial x_j})
+\end{align}
+```
+"""
+
+# ╔═╡ 3a2132e7-7d69-42d7-89d3-b2d7679ad74f
+md"""
+## Forward on reverse
+
+**Forward pass**: Given ``s_1 = \text{Dual}(f_1(x), \frac{\partial f_1}{\partial x_j})``
+1. Compute ``s_2 = f_2(s_1)`` → same as forward on forward
+2. Compute ``J_{f_2}(s_1)`` → same as forward on forward
+
+**Reverse pass**: Given ``r_2 = \text{Dual}(\frac{\partial f}{\partial s_2}, \frac{\partial^2 f}{\partial s_2 \partial x_j})``, compute
+```math
+\begin{align}
+r_2 J_{f_2}(s_1)
+& =
+\text{Dual}(\frac{\partial f}{\partial s_2}, \frac{\partial^2 f}{\partial s_2 \partial x_j}) \cdot \text{Dual}(J_2, H_{2j}) \cdot
+\\
+& = \text{Dual}(
+\frac{\partial f}{\partial s_2} J_2,
+\frac{\partial^2 f}{\partial s_2 \partial x_j} J_2 +
+\frac{\partial f_1}{\partial x_i} H_{2j})\\
+& = \text{Dual}(
+\frac{\partial f}{\partial s_1},
+\frac{\partial^2 f}{\partial s_1 \partial x_j})
+\end{align}
+```
+"""
+
 # ╔═╡ c1da4130-5936-499f-bb9b-574e01136eca
 md"### Acknowledgements and further readings
 
@@ -591,6 +696,36 @@ qa(md"What about neural networks ?", md"""
 In that case, ``d_0`` is equal to the number of entries in ``W_1`` added with the number of entries in ``W_2`` while ``d_n`` is ``1`` since the loss is scalar. We should therefore clearly multiply from left to right hence do reverse diff.
 """)
 
+# ╔═╡ 78d8c8c9-568d-472a-9f06-a50b1cf2384b
+qa(md"How can the Hessian of ``f`` be computed given an AD for Jacobian and gradient.", md"""
+Define the function ``g(x) = \nabla f(x)``, the Hessian of ``f`` is then the Jacobian of ``g``:
+``\nabla^2 f(x) = J_g(x)``. See the solutions of `LabAD`!
+""")
+
+# ╔═╡ f23ca90f-b567-4257-ae41-ec15c57c1f3f
+qa(md"Does the AD need to be the same for the gradient and the Jacobian ?",
+md"""
+No. Given an implementation of reverse mode and forward mode, this gives 4 possibilities depending on which mode is used for the gradient and Jacobian.
+""")
+
+# ╔═╡ 4d76422e-711c-4f3e-87ab-0ce851bac064
+qa(md"What is the closed form expression for ``t_k`` in terms of the matrices ``J_k`` and ``H_{kj}`` ?",
+md"""
+We can prove by induction that the second part of the dual number ``t_k`` is:
+```math
+\frac{\partial^2 f_1}{\partial x_i \partial x_j} = J_k \cdots J_2 H_{1j} e_i + J_k \cdots J_3 H_{2j} J_1 e_i + H_{kj} J_{k-1} \cdots J_1 e_i
+```
+""")
+
+# ╔═╡ 4de9baec-f444-47b8-b9e6-7f3d9e9609b1
+qa(md"What is the closed form expression for ``r_k`` in terms of the matrices ``J_k`` and ``H_{kj}`` ?",
+md"""
+We can prove by induction that the second part of the dual number ``r_k`` is:
+```math
+\frac{\partial^2 f}{\partial s_k \partial x_j}^\top = (J_K \cdots J_{k+1} H_{kj} + J_K \cdots J_{k+2} H_{(k+1)j} J_k + H_{Kj} J_{K-1} \cdots J_k)^\top
+```
+""")
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
@@ -610,7 +745,7 @@ PlutoUI = "~0.7.71"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.3"
+julia_version = "1.11.7"
 manifest_format = "2.0"
 project_hash = "92a9b1ec4846a2b421b315c2a5c8d9375bb8e935"
 
@@ -1164,7 +1299,7 @@ version = "0.3.27+1"
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.1+2"
+version = "0.8.5+0"
 
 [[deps.OpenSSL]]
 deps = ["BitFlags", "Dates", "MozillaCACerts_jll", "OpenSSL_jll", "Sockets"]
@@ -1869,6 +2004,15 @@ version = "1.9.2+0"
 # ╟─95eb9960-89f0-4edc-8943-77a75bce2b80
 # ╟─9afd31c9-e938-417a-8c3f-e0d1ba88f95b
 # ╟─f010e781-f41e-4861-af1c-32cf5a76ce4d
+# ╟─9bbbda1f-74a6-458b-a084-9d034d6c291f
+# ╟─03b6aa6d-7517-4906-9430-302516d0653b
+# ╟─78d8c8c9-568d-472a-9f06-a50b1cf2384b
+# ╟─f23ca90f-b567-4257-ae41-ec15c57c1f3f
+# ╟─da5895e7-af99-46ff-9f53-36529d1ca456
+# ╟─9415a6ed-c05e-4487-b0be-f342ec7424cd
+# ╟─4d76422e-711c-4f3e-87ab-0ce851bac064
+# ╟─3a2132e7-7d69-42d7-89d3-b2d7679ad74f
+# ╟─4de9baec-f444-47b8-b9e6-7f3d9e9609b1
 # ╟─c1da4130-5936-499f-bb9b-574e01136eca
 # ╟─5b85a063-cf0f-4afa-89f4-420d7350ecc3
 # ╟─b16f6225-1949-4b6d-a4b0-c5c230eb4c7f
