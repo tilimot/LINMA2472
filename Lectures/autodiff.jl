@@ -227,7 +227,7 @@ Useful: ``\text{vec}(AXB) = (B^\top \otimes A) \text{vec}(X)``
 F(X) & = AX\\
 G(\text{vec}(X)) \triangleq \text{vec}(F(X)) & = (I \otimes A) \text{vec}(X)\\
 J_G & = (I \otimes A)\\
-J_G^\top \text{vec}(R) & = (I \times A^\top) \text{vec}(R)\\
+J_G^\top \text{vec}(R) & = (I \otimes A^\top) \text{vec}(R)\\
 \partial F^*[R] = \text{mat}(J_G^\top \text{vec}(R)) & = A^\top R\\
 \end{align}
 ```
@@ -246,7 +246,9 @@ For the scalar product
 =
 \sum_{i,j} X_{ij} Y_{ij}
 =
-\langle \text{vec}(X), \text{vec}(Y) \rangle, \quad A^* = A^\top
+\langle \text{vec}(X), \text{vec}(Y) \rangle
+=
+\text{tr}(X Y^\top), \quad A^* = A^\top
 ```
 Now, given a forward tangent ``T`` and a reverse tangent ``R``
 ```math
@@ -267,8 +269,8 @@ Consider applying a scalar function ``f`` (e.g. ``\tanh`` to each entry of a mat
 (F(X))_{ij} & = f(X_{ij}) = f.(X)\\
 G(\text{vec}(X)) \triangleq \text{vec}(F(X)) & = \text{vec}(f.(X))\\
 J_G & = \text{Diag}(\text{vec}(f'.(X)))\\
-J_G^\top \text{vec}(T) & = \text{Diag}(\text{vec}(f'.(X))) \text{vec}(T)\\
-\partial F[T] = \text{mat}(J_G^\top \text{vec}(T)) & = f'.(X) \odot T\\
+J_G \text{vec}(T) & = \text{Diag}(\text{vec}(f'.(X))) \text{vec}(T)\\
+\partial F[T] = \text{mat}(J_G \text{vec}(T)) & = f'.(X) \odot T\\
 J_G^\top \text{vec}(R) & = \text{Diag}(\text{vec}(f'.(X))) \text{vec}(R)\\
 \partial F^*[R] = \text{mat}(J_G^\top \text{vec}(R)) & = f'.(X) \odot R\\
 \end{align}
@@ -406,6 +408,17 @@ r_2 J_{f_2}(s_1)
 \frac{\partial^2 f}{\partial s_1 \partial x_j})
 \end{align}
 ```
+"""
+
+# ╔═╡ 5a79c09e-2a33-43d1-a5dc-caba3db467dd
+md"""
+## Reverse on forward
+
+**Forward pass**: Given ``s_1 = \text{Dual}(f_1(x), \frac{\partial f_1}{\partial x_{\textcolor{red}i}})``
+1. Forward mode computes ``s_2 = f_2(s_1) = (f_2(f_1(x)), J_{f_2}\frac{\partial f_1}{\partial x_{\textcolor{red}i}}) = ((f_2 \circ f_1)(x), \partial (f_2 \circ f_1) / \partial x_{\textcolor{red}i})``
+2. The reverse mode computes the local Jacobian of this operation : ``\partial s_2 / \partial s_1``. The local Jacobian of ``y \mapsto f_2(y)`` is ``J_2``. The local Jacobian of ``(y, z) \mapsto J_{f_2}(y) z`` is ``(H_{2}, J_2)``
+
+To be continued...
 """
 
 # ╔═╡ c1da4130-5936-499f-bb9b-574e01136eca
@@ -713,7 +726,7 @@ qa(md"What is the closed form expression for ``t_k`` in terms of the matrices ``
 md"""
 We can prove by induction that the second part of the dual number ``t_k`` is:
 ```math
-\frac{\partial^2 f_1}{\partial x_i \partial x_j} = J_k \cdots J_2 H_{1j} e_i + J_k \cdots J_3 H_{2j} J_1 e_i + H_{kj} J_{k-1} \cdots J_1 e_i
+\frac{\partial^2 f_k}{\partial x_i \partial x_j} = J_k \cdots J_2 H_{1j} e_i + J_k \cdots J_3 H_{2j} J_1 e_i + H_{kj} J_{k-1} \cdots J_1 e_i
 ```
 """)
 
@@ -2013,6 +2026,7 @@ version = "1.9.2+0"
 # ╟─4d76422e-711c-4f3e-87ab-0ce851bac064
 # ╟─3a2132e7-7d69-42d7-89d3-b2d7679ad74f
 # ╟─4de9baec-f444-47b8-b9e6-7f3d9e9609b1
+# ╟─5a79c09e-2a33-43d1-a5dc-caba3db467dd
 # ╟─c1da4130-5936-499f-bb9b-574e01136eca
 # ╟─5b85a063-cf0f-4afa-89f4-420d7350ecc3
 # ╟─b16f6225-1949-4b6d-a4b0-c5c230eb4c7f
