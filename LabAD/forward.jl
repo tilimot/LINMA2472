@@ -20,7 +20,12 @@ Base.:/(x::Dual, α::Number) = Dual(x.value / α, x.derivative / α)
 Base.:*(x::Dual, y::Dual) = Dual(x.value * y.value, x.value * y.derivative + x.derivative * y.value)
 Base.:^(x::Dual, n::Integer) = Base.power_by_squaring(x, n)
 # Specific functions and operations
-Base.tanh(::Dual) = error("Complete this as part of exercise 1")
+Base.tanh(d::Dual) = begin
+    v = tanh(d.value)                     # valeur de tanh
+    dv = (1 - v^2) * d.derivative         # dérivée via chaîne
+    Dual(v, dv)
+end
+
 Base.show(io::IO, d::Dual) = print(io, "Dual(", d.value, ", ", d.derivative, ")")
 
 function onehot(v, i)

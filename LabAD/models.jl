@@ -27,6 +27,8 @@ function tanh_activation(W, X)
     return hidden_layer * W2
 end
 
+
+
 ########## ReLU ############
 
 function relu(x)
