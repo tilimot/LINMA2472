@@ -94,9 +94,11 @@ md"""
 
 The chain rule gives us  
 ```math
-\frac{\partial f_3}{\partial x} (f_1(x), f_2(x)) = \frac{\partial f_3}{\partial s_1}(s_1, s_2) \cdot \frac{\partial s_1}{\partial x} + \frac{\partial f_3}{\partial s_2}(s_1, s_2) \cdot \frac{\partial s_2}{\partial x}
+\frac{\partial f_3}{\partial x} (f_1(x), f_2(x)) = \partial_1 f_3(s_1, s_2) \cdot \frac{\partial s_1}{\partial x} + \partial_2 f_3(s_1, s_2) \cdot \frac{\partial s_2}{\partial x}
 ```
-To compute this expression, we need the values of ``g(x)`` and ``h(x)`` as well as the derivatives ``\partial g / \partial x`` and ``\partial h / \partial x``.
+To compute this expression, we need the values of ``s_1(x)`` and ``s_2(x)`` as well as the derivatives ``\partial s_1 / \partial x`` and ``\partial s_2 / \partial x``.
+
+Common to forward and reverse: Given ``s_1, s_2``, computes **local** derivatives ``\partial_1 f_3(s_1, s_2)`` and ``\partial_2 f_3(s_1, s_2)``, shortened ``\partial_1 f_3, \partial_2 f_3`` for conciseness.
 """
 
 # ╔═╡ fa5dba01-a3f7-452c-877e-352d578ecf51
@@ -104,17 +106,67 @@ hbox([
 	md"""
 #### Forward
 
-$$t_3 = \frac{\partial s_3}{\partial s_1} t_1 + \frac{\partial s_3}{\partial s_2} t_2$$
-
-* Given ``s_1, s_2``, computes ``\frac{\partial s_3}{\partial s_1}(s_1, s_2)`` and ``\frac{\partial s_3}{\partial s_2}(s_1, s_2)``
-* Given ``t_1`` and ``t_2``, computes ``\partial f_3/\partial x``""",
+```math
+\begin{align}
+t_3 & = \partial_1 f_3 \cdot t_1 + \partial_2 f_3 \cdot t_2\\
+& =
+\begin{bmatrix}
+	\partial_1 f_3 & \partial_2 f_3
+\end{bmatrix} \cdot
+\begin{bmatrix}
+	t_1\\
+	t_2
+\end{bmatrix}\\
+& =
+\partial f_3 \cdot
+\begin{bmatrix}
+	t_1\\
+	t_2
+\end{bmatrix}
+\end{align}
+```""",
 	Div(html" ", style = Dict("flex-grow" => "1")),
 	md"""
 #### Reverse
-* Given ``s_1, s_2``, computes ``\frac{\partial s_3}{\partial s_1}(s_1, s_2)`` and ``\frac{\partial s_3}{\partial s_2}(s_1, s_2)``
-* Given ``r_3 = \partial s_K / \partial s_3``
-  - **Add** ``r_3 \cdot (\partial s_3 / \partial s_1) `` to  ``r_1``
-  - **Add** ``r_3 \cdot (\partial s_3 / \partial s_2) `` to  ``r_2``
+
+```math
+\begin{align}
+\begin{bmatrix}
+	r_1 &
+	r_2
+\end{bmatrix}
+& \mathrel{\raise{0.19ex}{\scriptstyle+}} = r_1 \cdot \partial f_3\\
+& \mathrel{\raise{0.19ex}{\scriptstyle+}} = r_1 \cdot
+\begin{bmatrix}
+	\partial_1 f_3 & \partial_2 f_3
+\end{bmatrix}\\
+& \mathrel{\raise{0.19ex}{\scriptstyle+}} =
+\begin{bmatrix}
+	r_1 \cdot\partial_1 f_3 & r_1 \cdot\partial_2 f_3
+\end{bmatrix}
+\end{align}
+```
+""",
+	Div(html" ", style = Dict("flex-grow" => "1")),
+	md"""
+#### Reverse*
+
+```math
+\begin{align}
+\begin{bmatrix}
+	r_1\\
+	r_2
+\end{bmatrix} & \mathrel{\raise{0.19ex}{\scriptstyle+}} = r_1 \cdot \partial f_3^*\\
+& \mathrel{\raise{0.19ex}{\scriptstyle+}} = r_1 \cdot
+\begin{bmatrix}
+	\partial_1 f_3\\ \partial_2 f_3
+\end{bmatrix}\\
+& \mathrel{\raise{0.19ex}{\scriptstyle+}} =
+\begin{bmatrix}
+	r_1 \cdot \partial_1 f_3 \\ r_1 \cdot\partial_2 f_3
+\end{bmatrix}
+\end{align}
+```
 """
 ])
 
