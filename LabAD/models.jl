@@ -31,7 +31,7 @@ end
 
 ########## ReLU ############
 
-function relu(x)
+function relu(x::Real)
     return max(0, x)
 end
 

@@ -12,21 +12,37 @@ Base.zero(::Type{Dual}) = Dual(0, 0)
 # Addition and subtraction
 Base.:+(x::Dual, y::Dual) = Dual(x.value + y.value, x.derivative + y.derivative)
 Base.:-(x::Dual, y::Number) = Dual(x.value - y, x.derivative)
+Base.:-(x::Dual, y::Dual) = Dual(x.value-y.value, x.derivative-y.derivative)
+Base.:-(x::Dual) = Dual(-x.value, -x.derivative)
 # Scalar multiplication and division
 Base.:*(α::Number, x::Dual) = Dual(α * x.value, α * x.derivative)
 Base.:*(x::Dual, α::Number) = Dual(x.value * α, x.derivative * α)
 Base.:/(x::Dual, α::Number) = Dual(x.value / α, x.derivative / α)
+Base.:/(x::Dual, y::Dual) = Dual(x.value/y.value, (x.derivative*y.value-y.derivative*x.value)/(y.value^2))
 # Dual multiplication, division and power
 Base.:*(x::Dual, y::Dual) = Dual(x.value * y.value, x.value * y.derivative + x.derivative * y.value)
 Base.:^(x::Dual, n::Integer) = Base.power_by_squaring(x, n)
 # Specific functions and operations
-Base.tanh(d::Dual) = begin
-    v = tanh(d.value)                     # valeur de tanh
-    dv = (1 - v^2) * d.derivative         # dérivée via chaîne
-    Dual(v, dv)
-end
+Base.tanh(d::Dual) = Dual(tanh(d.value), (1-tanh(d.value)^2)*d.derivative)
+Base.exp(d::Dual) = Dual(exp(d.value), exp(d.value) * d.derivative)
+Base.log(d::Dual) = Dual(log(d.value), d.derivative / d.value)
+
+Base.isless(x::Dual, y::Real) = x.value < y
+Base.isless(x::Real, y::Dual) = x < y.value
+Base.isless(x::Dual, y::Dual) = x.value < y.value
+
 
 Base.show(io::IO, d::Dual) = print(io, "Dual(", d.value, ", ", d.derivative, ")")
+
+# ReLU pour un Dual
+function relu(d::Dual)
+    if d.value > 0
+        return Dual(d.value, d.derivative)
+    else
+        return Dual(0, 0)
+    end
+end
+
 
 function onehot(v, i)
     z = zero(similar(v, Float64))

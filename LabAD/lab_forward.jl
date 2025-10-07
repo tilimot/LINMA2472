@@ -103,11 +103,15 @@ losses = train!(Forward.gradient!, L, w)
 
 # Train more!
 
-train!(Forward.gradient!, L, w; losses)
+for _ in 1:4000 
+    train!(Forward.gradient!, L, w; losses)
+end
 
 plot(eachindex(losses), log.(losses), label = "")
 
 plot_moon(tanh_activation, w, X, y)
+
+
 
 ########## ReLU ############
 
@@ -133,9 +137,9 @@ Forward.gradient(L, w)
 losses = train!(Forward.gradient!, L, w)
 
 # Train more !
-
-train!(Forward.gradient!, L, w; losses)
-
+for _ in 1:1000
+    train!(Forward.gradient!, L, w; losses)
+end
 plot(eachindex(losses), log.(losses), label = "")
 
 plot_moon(relu_activation, w, X, y)
@@ -160,7 +164,9 @@ losses = train!(Forward.gradient!, L, w)
 
 # Train more !
 
-train!(Forward.gradient!, L, w; losses)
+for _ in 1:200
+    train!(Forward.gradient!, L, w; losses)
+end 
 
 plot(eachindex(losses), log.(losses), label = "")
 
