@@ -581,6 +581,26 @@ md"""
 ```
 """
 
+# ╔═╡ fa6dd3f7-7b57-483b-ba0f-90c9bb7bb6a6
+md"""
+## Reverse on reverse
+
+**Forward pass (2nd)**:
+1. Forward pass computes ``s_2 = f_2(s_1)`` → Jacobian ``\partial s_2 / \partial s_1 = J_2``
+2. Local Jacobian ``J_2 = \partial f_2(s_1)`` → Jacobian ``\partial J_2 / \partial s_1 = H_2``
+2. Backward pass computes ``r_1 = r_2 \partial f_2(s_1)`` → Jacobian of ``(s_1, r_2) \mapsto r_2 \partial f_2(s_1)`` is ``(\partial^2 f_2(s_1)[r_2], \partial f_2(s_1)) = (\partial^2 f_2(s_1)[r_2], J_2)``
+
+**Reverse pass (2nd)**:
+The result is ``r_0``, let ``\dot{r}_k`` be the second-order reverse tangent for ``r_k`` and ``\dot{s}_k`` be the second-order reverse tangent of ``s_k``.
+We have
+```math
+\begin{align}
+  \dot{r}_1 & = \dot{r}_2 \cdot J_2\\
+  \dot{s}_1 & = \partial^2 f_2(s_1)[r_2, \dot{r}_2] + \dot{s}_2 J_2
+\end{align}
+```
+"""
+
 # ╔═╡ c1da4130-5936-499f-bb9b-574e01136eca
 md"### Acknowledgements and further readings
 
@@ -957,6 +977,13 @@ We can prove by induction that the second part of the dual number ``r_k`` is:
 qa(md"Which value of ``r_k`` is solution for this recurrence equation ?",
 md"""
 We find ``r_k = \text{Dual}(\frac{\partial f}{\partial s_k}, \frac{\partial^2 f}{\partial s_k \partial x_{\color{red}j}})`` as solution.
+""")
+
+# ╔═╡ 200e2b1b-065a-4d60-b5fd-86700e4c811a
+qa(md"Which value of ``\dot{s}_k, \dot{r}_k`` is solution for this recurrence equation ?",
+md"""
+Assuming ``\dot{s}_0 = e_i``,
+we find ``\dot{s}_k = \frac{\partial^2 f}{\partial s_k \partial x_i}, \dot{r}_k = \frac{\partial f}{\partial s_k}`` as solution.
 """)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -3177,6 +3204,8 @@ version = "1.9.2+0"
 # ╟─4de9baec-f444-47b8-b9e6-7f3d9e9609b1
 # ╟─5a79c09e-2a33-43d1-a5dc-caba3db467dd
 # ╟─16f611e8-8e41-43f3-830c-9976cb720b9f
+# ╟─fa6dd3f7-7b57-483b-ba0f-90c9bb7bb6a6
+# ╟─200e2b1b-065a-4d60-b5fd-86700e4c811a
 # ╟─c1da4130-5936-499f-bb9b-574e01136eca
 # ╟─5b85a063-cf0f-4afa-89f4-420d7350ecc3
 # ╟─b16f6225-1949-4b6d-a4b0-c5c230eb4c7f
