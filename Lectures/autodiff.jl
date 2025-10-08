@@ -438,7 +438,7 @@ md"`h` = $(h_slider)"
 W = [rand(Float32, h, size(X, 1)), rand(Float32, size(y, 1), h)]
 
 # ╔═╡ a580ef44-234a-4ed1-b007-920651415427
-sum((W[2] * tanh.(W[1] * X) - y).^2)
+sum((W[2] * tanh.(W[1] * X) - y).^2) / size(y, 2)
 
 # ╔═╡ 87c6a5bc-82bf-44a5-b4d6-6d50285348c0
 @time reverse_diff(W, X, y)
@@ -484,8 +484,17 @@ md"""
 
 # ╔═╡ 7d79ff81-59e0-41f0-b2fe-70b41f44591f
 md"""
-**Notation** Let ``f_k : \mathbb{R}^m \to \mathbb{R}^n``. ``\partial f_k \triangleq \partial f_k(s_{k-1}) \in \mathbb{R}^{n \times m}``, ``\partial^2 f_k \triangleq \partial^2 f_k(s_{k-1}) \in \mathbb{R}^{n \times m \times m}`` is a 3D array/tensor.
-Given ``v \in \mathbb{R}^m``, ``\partial^2 f_k[v] \triangleq \partial^2 f_k \cdot v \in \mathbb{R}^{n \times m}`` → back to matrix realm.
+## Notation
+* Let ``f_k : \mathbb{R}^{d_{k-1}} \to \mathbb{R}^{d_k}``. ``\partial f_k \triangleq \partial f_k(s_{k-1}) \in \mathbb{R}^{d_k \times d_{k-1}}``, ``\partial^2 f_k \triangleq \partial^2 f_k(s_{k-1}) \in \mathbb{R}^{d_k \times d_{k-1} \times d_{k-1}}`` is a 3D array/tensor.
+* Given ``v \in \mathbb{R}^{d_{k-1}}``, by the product ``(\partial^2 f_k \cdot v) \in \mathbb{R}^{d_k \times d_{k-1}}`` , we denote the contraction of the the 3rd (or 2nd since the tensor is symmetric over its last 2 dimensions) dimension:
+```math
+(\partial^2 f_k \cdot v)_{ij} = \sum_{l = 1}^{d_{k-1}} (\partial^2 f_k)_{ijl} \cdot v_l
+```
+* Given ``u \in \mathbb{R}^{d_k}``, by the product ``(u \cdot \partial^2 f_k) \in \mathbb{R}^{d_{k-1} \times d_{k-1}}`` , we denote the contraction of the the 1st dimension.
+```math
+(u \cdot \partial^2 f_k)_{ij} = \sum_{l = 1}^{d_k} u_l \cdot (\partial^2 f_k)_{lij}
+```
+* Both ``\partial^2 f_k \cdot v`` and ``u \cdot \partial^2 f_k`` are matrices so then we're back to matrix notations.
 """
 
 # ╔═╡ da5895e7-af99-46ff-9f53-36529d1ca456
@@ -498,16 +507,14 @@ md"""
 & =
 \frac{\partial}{\partial x_j} \left(\frac{\partial (f_2 \circ f_1)}{\partial x_i} \right)\\
 & =
-\frac{\partial}{\partial x_j} \left(\partial f_2 \cdot  \frac{\partial f_1}{\partial x_i} \right)\\
-& =
 \frac{\partial}{\partial x_j} \left(\partial f_2 \cdot \frac{\partial f_1}{\partial x_i} \right)\\
 & =
-\partial^2 f_2\left[\frac{\partial f_1}{\partial x_j}\right] \cdot \frac{\partial f_1}{\partial x_i} + 
+\left(\partial^2 f_2 \cdot \frac{\partial f_1}{\partial x_j} \right) \cdot \frac{\partial f_1}{\partial x_i} + 
 \partial f_2 \cdot \frac{\partial^2 f_1}{\partial x_i \partial x_j}
 \end{align}
 ```
 
-In terms of the matrices ``J_k = \partial f_k`` and ``H_{kj} = \frac{\partial}{\partial x_j} J_k = \partial^2 f_k\left[\frac{\partial s_{k-1}}{\partial x_j}\right]``, it becomes
+In terms of the matrices ``J_k = \partial f_k`` and ``H_{kj} = \frac{\partial}{\partial x_j} J_k = \partial^2 f_k \cdot \frac{\partial s_{k-1}}{\partial x_j}``, it becomes
 ```math
 \begin{align}
 \frac{\partial^2 (f_2 \circ f_1)}{\partial x_i \partial x_j}
@@ -570,7 +577,7 @@ md"""
 
 **Forward pass**: Given ``s_1 = \text{Dual}(f_1(x), \frac{\partial f_1}{\partial x_{\textcolor{red}i}})``
 1. Forward mode computes ``s_2 = f_2(s_1) = (f_2(f_1(x)), J_2 \cdot \frac{\partial f_1}{\partial x_{\textcolor{red}i}}) = ((f_2 \circ f_1)(x), \partial (f_2 \circ f_1) / \partial x_{\textcolor{red}i})``
-2. The reverse mode computes the local Jacobian of this operation : ``\partial s_2 / \partial s_1``. The local Jacobian of ``(s_1)_1 \mapsto f_2((s_1)_1)`` is ``J_2``. The local Jacobian of ``s_1 \mapsto \partial f_2((s_1)_1) (s_1)_2`` is ``(\partial^2 f_2((s_1)_1)[(s_1)_2], \partial f_2((s_1)_1)) = (\partial^2 f_2(f_1(x)) \left[\frac{\partial f_1}{\partial x_{\textcolor{red}i}}\right], \partial f_2(f_1(x)) = (H_{2\color{red}i}, J_2)``
+2. The reverse mode computes the local Jacobian of this operation : ``\partial s_2 / \partial s_1``. The local Jacobian of ``(s_1)_1 \mapsto f_2((s_1)_1)`` is ``J_2``. The local Jacobian of ``s_1 \mapsto \partial f_2((s_1)_1) (s_1)_2`` is ``(\partial^2 f_2((s_1)_1) \cdot (s_1)_2, \partial f_2((s_1)_1)) = (\partial^2 f_2(f_1(x)) \cdot \frac{\partial f_1}{\partial x_{\textcolor{red}i}}, \partial f_2(f_1(x)) = (H_{2\color{red}i}, J_2)``
 
 **Reverse pass**:
 ```math
@@ -587,16 +594,16 @@ md"""
 
 **Forward pass (2nd)**:
 1. Forward pass computes ``s_2 = f_2(s_1)`` → Jacobian ``\partial s_2 / \partial s_1 = J_2``
-2. Local Jacobian ``J_2 = \partial f_2(s_1)`` → Jacobian ``\partial J_2 / \partial s_1 = H_2``
-2. Backward pass computes ``r_1 = r_2 \partial f_2(s_1)`` → Jacobian of ``(s_1, r_2) \mapsto r_2 \partial f_2(s_1)`` is ``(\partial^2 f_2(s_1)[r_2], \partial f_2(s_1)) = (\partial^2 f_2(s_1)[r_2], J_2)``
+2. Local Jacobian ``J_2 = \partial f_2(s_1)`` → The Jacobian is the 3D array ``\partial J_2 / \partial s_1 = \partial^2 f_2``
+3. Backward pass computes ``r_1 = r_2 \cdot \partial f_2(s_1)`` → Jacobian of ``(s_1, r_2) \mapsto r_2 \cdot \partial f_2(s_1)`` is ``(r_2 \cdot \partial^2 f_2(s_1), \partial f_2(s_1)) = (r_2 \cdot \partial^2 f_2, J_2)``. Note that here ``r_2 \in \mathbb{R}^{d_k}`` is multiplying the first dimension of the tensor ``\partial^2 f_2(s_1) \in \mathbb{R}^{d_k \times d_{k-1} \times d_{k-1}}`` so the result is a symmetric matrix of dimension ``\mathbb{R}^{d_{k-1} \times d_{k-1}}``
 
 **Reverse pass (2nd)**:
 The result is ``r_0``, let ``\dot{r}_k`` be the second-order reverse tangent for ``r_k`` and ``\dot{s}_k`` be the second-order reverse tangent of ``s_k``.
 We have
 ```math
 \begin{align}
-  \dot{r}_1 & = \dot{r}_2 \cdot J_2\\
-  \dot{s}_1 & = \partial^2 f_2(s_1)[r_2, \dot{r}_2] + \dot{s}_2 J_2
+  \dot{r}_2 & = J_2 \cdot \dot{r}_1\\
+  \dot{s}_1 & = (r_2 \cdot \partial^2 f_2(s_1)) \cdot \dot{r}_1 + \dot{s}_2 \cdot J_2
 \end{align}
 ```
 """
@@ -982,8 +989,33 @@ We find ``r_k = \text{Dual}(\frac{\partial f}{\partial s_k}, \frac{\partial^2 f}
 # ╔═╡ 200e2b1b-065a-4d60-b5fd-86700e4c811a
 qa(md"Which value of ``\dot{s}_k, \dot{r}_k`` is solution for this recurrence equation ?",
 md"""
-Assuming ``\dot{s}_0 = e_i``,
-we find ``\dot{s}_k = \frac{\partial^2 f}{\partial s_k \partial x_i}, \dot{r}_k = \frac{\partial f}{\partial s_k}`` as solution.
+Starting with ``\dot{s}_0 = e_i``, we have
+```math
+\begin{align}
+r_k & = J_K \cdots J_{k+1}\\
+\dot{r}_k & = J_k \cdots J_1 e_i\\
+(r_k \cdot \partial^2 f_k) \cdot \dot{r}_{k-1}
+& =
+r_k \cdot (\partial^2 f_k \cdot \dot{r}_{k-1})\\
+& =
+r_k \cdot H_{ki}\\
+\dot{s}_k & = \sum_{k=1}^K r_k H_{ki} J_{k-1} \cdots J_1
+\end{align}
+```
+So we find ``\dot{s}_k = \frac{\partial^2 f}{\partial s_k \partial x_i}, \dot{r}_k = \frac{\partial f}{\partial s_k}`` as solution.
+""")
+
+# ╔═╡ e4a9c57b-c811-428b-a6b8-191b78d5f361
+qa(md"What is the difference with reverse on forward and forward on reverse ?",
+md"""
+Reverse on reverse computes the product in the order
+```math
+((J_K \cdots J_{k-1}) \cdot \partial^2 f_k) \cdot (J_k \cdots J_1 e_i)
+```
+while reverse on forward and forward on reverse compute it in the order
+```math
+(J_K \cdots J_{k-1}) \cdot (\partial^2 f_k \cdot (J_k \cdots J_1 e_i))
+```
 """)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -3206,6 +3238,7 @@ version = "1.9.2+0"
 # ╟─16f611e8-8e41-43f3-830c-9976cb720b9f
 # ╟─fa6dd3f7-7b57-483b-ba0f-90c9bb7bb6a6
 # ╟─200e2b1b-065a-4d60-b5fd-86700e4c811a
+# ╟─e4a9c57b-c811-428b-a6b8-191b78d5f361
 # ╟─c1da4130-5936-499f-bb9b-574e01136eca
 # ╟─5b85a063-cf0f-4afa-89f4-420d7350ecc3
 # ╟─b16f6225-1949-4b6d-a4b0-c5c230eb4c7f
