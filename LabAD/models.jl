@@ -4,9 +4,13 @@ include("flatten.jl")
 
 mse(y_est, y) = sum((y_est - y).^2) / length(y)
 
-function random_weights(X, ::AbstractVector, num_hidden)
+function last_layer(::AbstractVector, num_hidden::Integer)
+    return rand(num_hidden)
+end
+
+function random_weights(X, y, num_hidden::Integer)
     W1 = rand(size(X, 2), num_hidden)
-    W2 = rand(num_hidden)
+    W2 = last_layer(y, num_hidden)
     return Flatten(W1, W2)
 end
 
@@ -41,10 +45,8 @@ end
 
 ########## Cross entropy ############
 
-function random_weights(X, Y::AbstractMatrix, num_hidden)
-    W1 = rand(size(X, 2), num_hidden)
-    W2 = rand(num_hidden, size(Y, 2))
-    return Flatten(W1, W2)
+function last_layer(Y::AbstractMatrix, num_hidden::Integer)
+    return rand(num_hidden, size(Y, 2))
 end
 
 function softmax(x)
