@@ -29,7 +29,7 @@ end
 # For ReLU
 function Base.broadcasted(::typeof(relu), x::VectNode)
     y = max.(x.value, 0.0)
-    dydx = @. ifelse(x.value > 0.0, 1.0, 0.0)
+    dydx = @. ifelse(x.value >= 0.0, 1.0, 0.0)
 
     return VectNode(
         y,
@@ -382,3 +382,4 @@ end
 gradient(f, x) = gradient!(f, zero(x), x)
 
 end
+
