@@ -1,5 +1,5 @@
 include("flatten.jl")
-include("/home/tim/Documents/uclouvain/2025-2026/linma2472_algorithms_in_data_science/LINMA2472/LabAD/models.jl")
+
 module VectReverse
 const Flatten = Main.Flatten
 mutable struct VectNode
@@ -15,6 +15,12 @@ VectNode(x::Number) = VectNode(x, zero(x), Vector{Tuple{VectNode,Function}}())
 
 # pour vecteurs / matrices
 VectNode(x::AbstractArray) = VectNode(x, zeros(size(x)), Vector{Tuple{VectNode,Function}}())
+
+# relu
+relu(x) = max(x, 0)
+# je surcharge comme un baraki
+#Base.:*(a::Vector{Float64}, b::Vector{Float64}) = a .* b
+
 
 # For `tanh.(X)`
 function Base.broadcasted(::typeof(tanh), x::VectNode)
