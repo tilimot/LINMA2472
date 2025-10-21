@@ -1033,7 +1033,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 CUDA = "~5.9.0"
-DataFrames = "~1.8.0"
+DataFrames = "~1.8.1"
 HypertextLiteral = "~0.9.5"
 MLDatasets = "~0.7.18"
 OneHotArrays = "~0.2.10"
@@ -1046,9 +1046,9 @@ PlutoUI = "~0.7.72"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.0"
+julia_version = "1.12.1"
 manifest_format = "2.0"
-project_hash = "07455369f7536795c6fc1f52a876ba26d4c417ce"
+project_hash = "aa99bcff8430e0d486a62f08c13fbd4562a1a179"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1410,9 +1410,9 @@ version = "0.7.13"
 
 [[deps.DataFrames]]
 deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
-git-tree-sha1 = "c967271c27a95160e30432e011b58f42cd7501b5"
+git-tree-sha1 = "d8928e9169ff76c6281f39a659f9bca3a573f24c"
 uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-version = "1.8.0"
+version = "1.8.1"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -1835,9 +1835,9 @@ version = "3.1.3+0"
 
 [[deps.JuliaInterpreter]]
 deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
-git-tree-sha1 = "d8337622fe53c05d16f031df24daf0270e53bc64"
+git-tree-sha1 = "277779adfedf4a30d66b64edc75dc6bb6d52a16e"
 uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
-version = "0.10.5"
+version = "0.10.6"
 
 [[deps.JuliaNVTXCallbacks_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -3063,7 +3063,7 @@ version = "0.17.4+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.13.1+1"
+version = "5.15.0+0"
 
 [[deps.libdecor_jll]]
 deps = ["Artifacts", "Dbus_jll", "JLLWrappers", "Libdl", "Libglvnd_jll", "Pango_jll", "Wayland_jll", "xkbcommon_jll"]
@@ -3137,7 +3137,7 @@ version = "1.9.2+0"
 """
 
 # ╔═╡ Cell order:
-# ╟─40baa108-eb68-433f-9917-ac334334f198
+# ╠═40baa108-eb68-433f-9917-ac334334f198
 # ╟─77a7de14-87d2-11ef-21ef-937b8239db5b
 # ╟─e46fb3ff-b26f-4efb-aaa1-760e80017797
 # ╟─af404768-0663-4bc3-81dd-6931b3a486be
