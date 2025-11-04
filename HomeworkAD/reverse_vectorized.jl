@@ -1,7 +1,7 @@
 include("flatten.jl")
 
 module VectReverse
-const relu = Main.relu
+#const relu = Main.relu
 const Flatten = Main.Flatten
 mutable struct VectNode
 	value::Any
@@ -10,6 +10,7 @@ mutable struct VectNode
 end
 
 
+relu(x) = max(x, 0)
 # For scalars
 VectNode(x::Number) = VectNode(x, zero(x), Vector{Tuple{VectNode,Function}}())
 
