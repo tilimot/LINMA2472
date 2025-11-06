@@ -1,26 +1,23 @@
 using CSV
 using DataFrames
 using BenchmarkTools
+using Plots
 
+# ---------------------------
 # Charger le module VectReverse
+# ---------------------------
 include("reverse_vectorized.jl")
 using .VectReverse: VectNode, relu_activation, backward!, Flatten
 
 # ---------------------------
 # Fonction de test pour un réseau de Flatten
 # ---------------------------
-function test_network(flat_layers::Vector{Flatten})
-    # On part du premier Flatten
+function test_network(flat_layers::Vector{Flatten{T}}) where T
     current = flat_layers[1]
-    
-    # Propagation couche par couche
     for layer in flat_layers[2:end]
-        # Multiplication élément-wise entre chaque composant
         current = Flatten([VectNode(sum(relu_activation.(a.value .* b.value))) 
                             for (a,b) in zip(current.components, layer.components)])
     end
-    
-    # Somme finale pour produire un VectNode unique
     return VectNode(sum([c.value for c in current.components]))
 end
 
@@ -35,9 +32,9 @@ end
 # ---------------------------
 # Paramètres des tests
 # ---------------------------
-n_layers_list = [2, 3, 5]               # Nombre de couches
-n_components_list = [1, 5, 10]         # Nombre de VectNode par couche
-component_sizes = [10, 100, 500]       # Taille de chaque composant
+n_layers_list = [2, 3, 5]             # Nombre de couches
+n_components_list = [1, 5, 10]       # Nombre de VectNode par couche
+component_sizes = [10, 100, 500]     # Taille de chaque composant
 
 # Préparer DataFrame pour stocker les résultats
 results = DataFrame(
@@ -74,3 +71,21 @@ end
 # ---------------------------
 CSV.write("vectreverse_perf_network.csv", results)
 println("Results saved to vectreverse_perf_network.csv")
+
+# ---------------------------
+# Tracé des résultats
+# ---------------------------
+# Temps vs taille totale, coloré par nombre de couches
+scatter(
+    results.total_size, results.time_ms,
+    group = results.n_layers,
+    xlabel = "Total number of scalars",
+    ylabel = "Time (ms)",
+    title = "VectReverse Performance",
+    legendtitle = "Number of layers",
+    markersize = 6
+)
+
+# Si tu veux sauvegarder le graphique
+savefig("vectreverse_perf_network_plot.png")
+println("Plot saved to vectreverse_perf_network_plot.png")
