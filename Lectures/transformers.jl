@@ -5,16 +5,23 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ 32621224-a782-4bf6-9570-562cf2bb7360
-using PlutoUI, DataFrames, PrettyTables, LinearAlgebra, Luxor, LaTeXStrings, MathTeXEngine
+using PlutoUI, DataFrames, PrettyTables, LinearAlgebra, Luxor, LaTeXStrings, MathTeXEngine, PlutoUI, PlutoUI.ExperimentalLayout, HypertextLiteral, PlutoTeachingTools
 
 # ╔═╡ 6f72e8a5-819d-474c-a725-7f7318d964d7
 include("utils.jl")
 
+# ╔═╡ 5058e4eb-c53d-4468-b7ff-4f04ded96418
+@htl("""
+<p align=center style=\"font-size: 40px;\">Transformers in Large Language Models (LLMs)</p><p align=right><i>Benoît Legat</i></p>
+$(PlutoTeachingTools.ChooseDisplayMode())
+$(PlutoUI.TableOfContents(depth=1))
+""")
+
 # ╔═╡ 95ec4140-9147-11ef-2af4-5528bad0e6f5
-section("Large Language Models (LLMs)")
+md"# Large Language Models (LLMs)"
 
 # ╔═╡ c09ec483-9fcf-48e7-b3c0-2508289e3cf3
-frametitle("Autoregressive Models")
+md"## Autoregressive Models"
 
 # ╔═╡ beccf4e8-1b01-4cb2-b23c-bc5db604f21c
 md"""
@@ -38,7 +45,7 @@ Given "past text", predict the "following text". How to turn text into vectors o
 """
 
 # ╔═╡ ccf2dc71-b883-497a-bc58-29ffaf9ea4ad
-frametitle("Text to vectors : step 1 → tokenization")
+md"## Text to vectors : step 1 → tokenization"
 
 # ╔═╡ 1bbf2152-4fdf-4ed2-9bdf-95d699824d11
 md"""
@@ -60,7 +67,7 @@ md"""
 """
 
 # ╔═╡ 57c2c944-0d91-489d-8ad7-f5520e71ef3e
-frametitle("Byte Pair Encoding")
+md"## Byte Pair Encoding"
 
 # ╔═╡ c3db7eb2-356a-428f-9777-6369662d8b06
 md"""
@@ -68,7 +75,7 @@ Note that the new tokens can also be part of the most frequence pair!
 """
 
 # ╔═╡ 2e8b1a77-1f04-4035-8d82-4061d81ecb7a
-frametitle("Increasing length of \"past text\"")
+md"## Increasing length of \"past text\""
 
 # ╔═╡ ed5b5702-4cca-4116-a70f-4a562178f490
 md"""
@@ -78,7 +85,7 @@ Length of "past text" increases with vocabulary size ``n_\text{voc}`` and contex
 """
 
 # ╔═╡ e2eca085-9f99-4e3a-9db4-e7f692aedd34
-frametitle("Text to vectors : step 2 → embedding")
+md"## Text to vectors : step 2 → embedding"
 
 # ╔═╡ 9e898325-e9e2-45bd-af74-3dd86f00f7b5
 md"""
@@ -109,8 +116,25 @@ The case become clearer when the input embedding ``C`` is shared between more th
 Same for the output embedding, ``D`` is useful when it is not preceded by a linear with which it can just be merged.
 """)
 
+# ╔═╡ e86a57ae-3945-4cbf-b2e4-a96f4b5295e0
+qa(md"Why don't we use ``D = C^{-1}`` ?",
+md"""
+The ``C`` matrix is not invertible as it is not square. Given a vector ``u``, the vector ``v = Du`` could be computed to be the mininum norm solution of ``u = Cv``, this is what is done by `v = D \ u`. Computing `D \ u` would be more computational work than `D' \ u` but that's not the only reason `D'` is used.
+If ``v`` is chosen so that ``u = Cv``, it means that ``v`` is a linear combination allowing to reconstruct ``u`` using the columns of ``C``.
+From that perspective, ``v_i`` could be nonzero even though the direction of the vector ``u`` us far from the direction of the column ``C_{:i}``.
+That does not correspond to what we want to do here.
+
+Here, we want a probability vector ``p`` with high probability ``p_i`` when the direction of the column ``C_{:i}`` is close to the direction of ``u``.
+In the vector ``v = C^\top u``, ``v_i = \langle C_{:i}, u \rangle`` is the scalar product between the ``i``th column of ``C`` and ``u`` hence it is a good measure of how close the direction are to each other.
+Of course this assumes that the column of ``C`` have the same norm, but the hope is for the model to figure in training that the columns of ``C`` should have unit norm.
+We can then simply apply softmax to turn these scalar products into probabilities ``p = \text{softmax}(v)``.
+""")
+
+# ╔═╡ 6622f9f0-cecc-476e-9d49-7d651f433b9f
+md"# Pre-transformers approaches"
+
 # ╔═╡ 6aa690e9-389f-4398-abae-b95060db4d90
-frametitle("Shared embedding")
+md"## Shared embedding"
 
 # ╔═╡ 6712c883-b407-47e1-a666-4de05f8f8d6e
 HAlign(
@@ -138,16 +162,19 @@ The matrix ``W_1`` has ``n_\text{ctx}d_\text{emb}`` columns. Assuming ``d_\text{
 """)
 
 # ╔═╡ f8330700-e964-4e19-9c55-2b11df45789e
-frametitle("Embedding sizes in LLMs")
+md"## Embedding sizes in LLMs"
 
 # ╔═╡ 4e10271c-49f8-4f1d-869c-5fa11275d7f6
-section("Recurrent neural networks (RNN)")
+md"## Recurrent neural networks (RNN)"
 
 # ╔═╡ d54b5390-0ec0-4ff8-ab18-51726482ca46
-frametitle("Extensions of RNNs")
+md"## Extensions of RNNs"
+
+# ╔═╡ 6800afbf-8ac6-4308-b4cc-b37da57e42c1
+md"# Attention is all you need"
 
 # ╔═╡ 55435b26-7fc3-4c8b-8013-6fd4fb65a08e
-frametitle("Numerical dictionary")
+md"## Numerical dictionary"
 
 # ╔═╡ bcbb3db2-85b3-4cb0-9309-f5c032d14da5
 md"
@@ -169,7 +196,7 @@ end
 numerical_lookup(dict, [0.8, 0.2])
 
 # ╔═╡ 8d231f2c-4b0c-4c37-a746-16e98d4cafc8
-frametitle("Attention head")
+md"## Attention head"
 
 # ╔═╡ 570fa160-3adb-463e-99b8-b7dd05076908
 function softmax(x)
@@ -189,7 +216,7 @@ end
 softmax_lookup(dict, [0.8, 0.2])
 
 # ╔═╡ bf563783-9784-4c74-a7b1-6d7a3ed618c5
-frametitle("Matrix form of attention")
+md"## Matrix form of attention"
 
 # ╔═╡ 9ff95a9a-192b-4a12-8e2e-7acd6659c066
 md"""
@@ -212,7 +239,7 @@ K^\top Q & =
 """
 
 # ╔═╡ 76ba4e9b-8bb0-47c4-b607-2ca711f035e6
-frametitle("Masked Attention")
+md"## Masked Attention"
 
 # ╔═╡ 8c27b182-0c3c-4c19-9619-df62b7dd6bf0
 HAlign(
@@ -252,13 +279,16 @@ V\text{softmax}(M + K^\top Q/\sqrt{d_k})
 """
 
 # ╔═╡ b7583418-f4fb-4c63-b421-b5b9af269768
-frametitle("Multi-Head Attention")
+md"## Multi-Head Attention"
 
 # ╔═╡ 6fc13413-53de-4c75-9b9e-620e0b7f8a1f
 qa(md"Is ``W^O`` needed if ``h = 1`` ?", md"No, if ``h = 1``, we can merge ``W^OW_1^V`` into a new ``W_1^V``.")
 
+# ╔═╡ d05e6f0f-0081-4fb6-91e9-ac2f58beda4a
+md"# Encoder-only transformer"
+
 # ╔═╡ a3efd921-eb14-4901-9d6c-800cc812fe02
-frametitle("Self-Attention")
+md"## Self-Attention"
 
 # ╔═╡ 4b61363d-87c9-4755-8286-44df34e9dd6a
 qa(
@@ -269,34 +299,74 @@ No. Since the same matrices ``W_j^V``, ``W_j^K`` and ``W_j^Q`` multiply the diff
 )
 
 # ╔═╡ 453544fc-0e3e-4e04-8c0c-192f3a038884
-frametitle("Positional encoding")
+md"## Positional encoding"
 
 # ╔═╡ 92e01e21-ca77-43fc-9bf8-0c5a7aaed1bb
-frametitle("Residual connection")
+md"## Residual connection"
 
 # ╔═╡ f2cba2aa-c541-4692-a441-e65741750a15
-frametitle("Layer normalization")
+md"## Layer normalization"
 
 # ╔═╡ e383bb72-49a1-4df1-84c3-b95a2ffe00f5
-frametitle("Feed-Forward network")
+md"## Feed-Forward network"
 
 # ╔═╡ af8194a1-a358-4cf7-b446-6b377cb76687
 md"The feed-forward network is implemented **independently** for the output of each query so each query can be processed independently through each **layer**. The next layer allows each queries to then look at the results of the previous layer for **past** (because of the mask) queries."
 
 # ╔═╡ 79e6c4a8-cc1e-40cc-bb09-e9a7a9a8e475
-frametitle("Transformer variations")
+md"## Transformer variations"
 
 # ╔═╡ a5b20939-9afa-48c0-aa67-cbca6bc99804
-frametitle("Cost of LLMs")
+md"## Cost of LLMs"
+
+# ╔═╡ a14e505e-2e4a-4c73-8133-7560ba58916b
+md"## Key-Value (KV) cache"
+
+# ╔═╡ 9a8eef1b-27c0-4d57-a389-53708ade9058
+md"""
+Let ``\hat{Y}_{i}`` be the intermediate output of ``i \in \{1, \ldots, N\}``.
+The the columns of the matrix ``\text{softmax}(C^\top \hat{Y}_i)`` (column-wise softmax) can be thought as intermediate probabilities that we denote ``\hat{p}_i``:
+```math
+(\hat{p}_i(x_{-n_\text{ctx}+1} | x_{-n_\text{ctx}}), \ldots, \hat{p}_i(x_{-1} | x_{-2}, \ldots, x_{-n_\text{ctx}}), \hat{p}_i(x_0 | x_{-1}, \ldots, x_{-n_\text{ctx}}))
+```
+and we predict the next token using ``\hat{p}_N(x_0 | x_{-1}, \ldots, x_{-n_\text{ctx}})``.
+"""
+
+# ╔═╡ 728f5fdf-77a5-46c7-b3ee-01064ef1b7e2
+qa(md"Should we discard all these intermediate ``\hat{Y}_i`` we computated or can we reuse it for the following token ?",
+md"""
+For the next token, the corresponding intermediate probabilities would be:
+```math
+(\hat{p}_i(x_{-n_\text{ctx}+2} | x_{-n_\text{ctx}+1}), \ldots, \hat{p}_i(x_{0} | x_{-1}, \ldots, x_{-n_\text{ctx}+1}), \hat{p}_i(x_1 | x_{0}, \ldots, x_{-n_\text{ctx}+1}))
+```
+Note that
+```math
+\begin{align}
+   \hat{p}_i(x_{-n_\text{ctx}+2} | x_{-n_\text{ctx}+1})
+   & \approx
+   \hat{p}_i(x_{-n_\text{ctx}+2} | x_{-n_\text{ctx}+1}, x_{-n_\text{ctx}})\\
+   \hat{p}_i(x_{0} | x_{-1}, \ldots, x_{-n_\text{ctx}+1})
+   & \approx
+   \hat{p}_i(x_0 | x_{-1}, \ldots, x_{-n_\text{ctx}})
+\end{align}
+```
+So for any ``j < n_\text{ctx}``, the ``j``th column of the ``\hat{Y}_i'`` that should be computed for the new token is approximately equal to
+the ``(j+1)``th column of ``\hat{Y}_i`` that we already computed for the previous token.
+What's more, the column of ``\hat{Y}_i`` was computed with one more token as context compared to what we need to compute in ``\hat{Y}_i'``.
+So even though it's not equal, reusing what we computed in ``\hat{Y}_i`` should provide better result, assuming the trained transformers using this auto-regressive structure in his layers.
+""")
+
+# ╔═╡ c8923675-e73e-4621-82b9-966d8b003b97
+md"# Encoder-decoder transformer"
 
 # ╔═╡ 04e9b912-6712-4290-acc4-f24bb27a1469
-frametitle("Machine translation")
+md"## Machine translation"
 
 # ╔═╡ 8b78360a-21cb-4574-a84d-46ea4d0cedb1
 img("sutskever2014Sequence")
 
 # ╔═╡ 6bff7bca-ea1d-44c6-b8c3-040250f90654
-frametitle("Cross-Attention")
+md"## Cross-Attention"
 
 # ╔═╡ f572e113-b36b-4a6b-96c7-c26f100e1ad4
 md"## Utils"
@@ -314,8 +384,8 @@ cite(args...) = bibcite(biblio, args...)
 md"""
 ### References
 
-* Recurrent neural networks $(cite("goodfellow2016Deep", "Chapter 10"))
-* Transformers $(cite("vaswani2017Attentiona"))
+* Recurrent neural networks : $(cite("goodfellow2016Deep", "Chapter 10")) and Section 4.7 of [The Elements of Differentiable Programming book](https://diffprog.github.io/)
+* Transformers : $(cite("vaswani2017Attentiona")) and Section 4.8 of [The Elements of Differentiable Programming book](https://diffprog.github.io/)
 * [Neural Networks: Zero to Hero](https://karpathy.ai/zero-to-hero.html) by Andrej Karpathy
 """
 
@@ -535,7 +605,7 @@ end 300 400)),
 
 # ╔═╡ 8d6ec2b3-997e-4df5-a3b2-c1dffa53d0ec
 qa(
-	md"What is the time complexity of a transformer with respect to ``d_\text{emb}``, ``n_\text{voc}``, ``n_\text{ctx}``, ``d_\text{ff}``, ``h`` and ``N`` ?",
+	md"What is the time complexity of inference with respect to ``d_\text{emb}``, ``n_\text{voc}``, ``n_\text{ctx}``, ``d_\text{ff}``, ``h`` and ``N`` ?",
 HAlign(
 md"""
 | Input | Parameters | Time |
@@ -827,33 +897,31 @@ HTML(html(@draw begin
 end 300 400)),
 )
 
-# ╔═╡ cb482044-80dc-4ee1-8b06-5940477e9842
-d = DataFrame("Name" => String["A"], "B" => String["C"])
-
-# ╔═╡ b4ca4ce4-2c1a-42e7-9116-dff9b11de7ee
-push!(d, ["a", "d"])
-
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
+HypertextLiteral = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 Luxor = "ae8d54c2-7ccd-5906-9d76-62fc9837b5bc"
 MathTeXEngine = "0a4f8689-d25c-4efe-a92b-7142dfc1aa53"
+PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 
 [compat]
 CSV = "~0.10.15"
-DataFrames = "~1.8.0"
+DataFrames = "~1.8.1"
 DocumenterCitations = "~1.4.1"
+HypertextLiteral = "~0.9.5"
 LaTeXStrings = "~1.4.0"
 Luxor = "~4.3.0"
 MathTeXEngine = "~0.6.6"
+PlutoTeachingTools = "~0.3.1"
 PlutoUI = "~0.7.72"
 PrettyTables = "~3.1.0"
 """
@@ -862,9 +930,9 @@ PrettyTables = "~3.1.0"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.0"
+julia_version = "1.12.1"
 manifest_format = "2.0"
-project_hash = "4a5a27628c93680af878a17ccc115d60f03bc589"
+project_hash = "8cf5017c347c067a952c4fa0584b3d429744517c"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -957,6 +1025,12 @@ git-tree-sha1 = "fde3bf89aead2e723284a8ff9cdf5b551ed700e8"
 uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
 version = "1.18.5+0"
 
+[[deps.CodeTracking]]
+deps = ["InteractiveUtils", "UUIDs"]
+git-tree-sha1 = "980f01d6d3283b3dbdfd7ed89405f96b7256ad57"
+uuid = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
+version = "2.0.1"
+
 [[deps.CodecZlib]]
 deps = ["TranscodingStreams", "Zlib_jll"]
 git-tree-sha1 = "962834c22b66e32aa10f7611c08c8ca4e20749a9"
@@ -1001,6 +1075,11 @@ weakdeps = ["Dates", "LinearAlgebra"]
     [deps.Compat.extensions]
     CompatLinearAlgebraExt = "LinearAlgebra"
 
+[[deps.Compiler]]
+git-tree-sha1 = "382d79bfe72a406294faca39ef0c3cef6e6ce1f1"
+uuid = "807dbc54-b67e-4c79-8afb-eafe4df6f2e1"
+version = "0.1.1"
+
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
@@ -1018,9 +1097,9 @@ version = "1.16.0"
 
 [[deps.DataFrames]]
 deps = ["Compat", "DataAPI", "DataStructures", "Future", "InlineStrings", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrecompileTools", "PrettyTables", "Printf", "Random", "Reexport", "SentinelArrays", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
-git-tree-sha1 = "c967271c27a95160e30432e011b58f42cd7501b5"
+git-tree-sha1 = "d8928e9169ff76c6281f39a659f9bca3a573f24c"
 uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-version = "1.8.0"
+version = "1.8.1"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
@@ -1128,6 +1207,11 @@ git-tree-sha1 = "f85dac9a96a01087df6e3a749840015a0ca3817d"
 uuid = "a3f928ae-7b40-5064-980b-68af3947d34b"
 version = "2.17.1+0"
 
+[[deps.Format]]
+git-tree-sha1 = "9c68794ef81b08086aeb32eeaf33531668d5f5fc"
+uuid = "1fa38f19-a742-5d3f-a2b9-30dd87b9d5f8"
+version = "1.3.7"
+
 [[deps.FreeType]]
 deps = ["CEnum", "FreeType2_jll"]
 git-tree-sha1 = "907369da0f8e80728ab49c1c7e09327bf0d6d999"
@@ -1174,6 +1258,12 @@ deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Li
 git-tree-sha1 = "45288942190db7c5f760f59c04495064eedf9340"
 uuid = "b0724c58-0f36-5564-988d-3bb0596ebc4a"
 version = "0.22.4+0"
+
+[[deps.Ghostscript_jll]]
+deps = ["Artifacts", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Zlib_jll"]
+git-tree-sha1 = "38044a04637976140074d0b0621c1edf0eb531fd"
+uuid = "61579ee1-b43e-5ca0-a5da-69d92c66a64b"
+version = "9.55.1+0"
 
 [[deps.Git]]
 deps = ["Git_LFS_jll", "Git_jll", "JLLWrappers", "OpenSSH_jll"]
@@ -1298,6 +1388,12 @@ git-tree-sha1 = "4255f0032eafd6451d707a51d5f0248b8a165e4d"
 uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
 version = "3.1.3+0"
 
+[[deps.JuliaInterpreter]]
+deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
+git-tree-sha1 = "277779adfedf4a30d66b64edc75dc6bb6d52a16e"
+uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
+version = "0.10.6"
+
 [[deps.JuliaSyntaxHighlighting]]
 deps = ["StyledStrings"]
 uuid = "ac6e5ff7-fb65-4e79-a425-ec3bc9c03011"
@@ -1331,6 +1427,24 @@ version = "2.10.3+0"
 git-tree-sha1 = "dda21b8cbd6a6c40d9d02a73230f9d70fed6918c"
 uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 version = "1.4.0"
+
+[[deps.Latexify]]
+deps = ["Format", "Ghostscript_jll", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "OrderedCollections", "Requires"]
+git-tree-sha1 = "44f93c47f9cd6c7e431f2f2091fcba8f01cd7e8f"
+uuid = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
+version = "0.16.10"
+
+    [deps.Latexify.extensions]
+    DataFramesExt = "DataFrames"
+    SparseArraysExt = "SparseArrays"
+    SymEngineExt = "SymEngine"
+    TectonicExt = "tectonic_jll"
+
+    [deps.Latexify.weakdeps]
+    DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+    SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+    SymEngine = "123dc426-2d89-5057-bbad-38513e3affd8"
+    tectonic_jll = "d7dd28d6-a5e6-559c-9131-7eb760cdacc5"
 
 [[deps.LazilyInitializedFields]]
 git-tree-sha1 = "0f2da712350b020bc3957f269c9caad516383ee0"
@@ -1411,6 +1525,12 @@ version = "1.12.0"
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 version = "1.11.0"
 
+[[deps.LoweredCodeUtils]]
+deps = ["CodeTracking", "Compiler", "JuliaInterpreter"]
+git-tree-sha1 = "e24491cb83551e44a69b9106c50666dea9d953ab"
+uuid = "6f1432cf-f94c-5a45-995e-cdbf5db27b0b"
+version = "3.4.4"
+
 [[deps.Luxor]]
 deps = ["Base64", "Cairo", "Colors", "DataStructures", "Dates", "FFMPEG", "FileIO", "PolygonAlgorithms", "PrecompileTools", "Random", "Rsvg"]
 git-tree-sha1 = "54bdbc3b05b3a4cf25ec4c00054038758c1c090b"
@@ -1430,6 +1550,11 @@ version = "4.3.0"
 git-tree-sha1 = "c64d943587f7187e751162b3b84445bbbd79f691"
 uuid = "6c6e2e6c-3030-632d-7369-2d6c69616d65"
 version = "1.1.0"
+
+[[deps.MacroTools]]
+git-tree-sha1 = "1e0228a030642014fe5cfe68c2c0a818f9e3f522"
+uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
+version = "0.5.16"
 
 [[deps.Markdown]]
 deps = ["Base64", "JuliaSyntaxHighlighting", "StyledStrings"]
@@ -1542,6 +1667,24 @@ weakdeps = ["REPL"]
     [deps.Pkg.extensions]
     REPLExt = "REPL"
 
+[[deps.PlutoHooks]]
+deps = ["InteractiveUtils", "Markdown", "UUIDs"]
+git-tree-sha1 = "072cdf20c9b0507fdd977d7d246d90030609674b"
+uuid = "0ff47ea0-7a50-410d-8455-4348d5de0774"
+version = "0.0.5"
+
+[[deps.PlutoLinks]]
+deps = ["FileWatching", "InteractiveUtils", "Markdown", "PlutoHooks", "Revise", "UUIDs"]
+git-tree-sha1 = "8f5fa7056e6dcfb23ac5211de38e6c03f6367794"
+uuid = "0ff47ea0-7a50-410d-8455-4348d5de0420"
+version = "0.1.6"
+
+[[deps.PlutoTeachingTools]]
+deps = ["Downloads", "HypertextLiteral", "Latexify", "Markdown", "PlutoLinks", "PlutoUI"]
+git-tree-sha1 = "8252b5de1f81dc103eb0293523ddf917695adea1"
+uuid = "661c6b06-c737-4d37-b85c-46df65de6f69"
+version = "0.3.1"
+
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Downloads", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
 git-tree-sha1 = "f53232a27a8c1c836d3998ae1e17d898d4df2a46"
@@ -1614,6 +1757,18 @@ deps = ["UUIDs"]
 git-tree-sha1 = "62389eeff14780bfe55195b7204c0d8738436d64"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "1.3.1"
+
+[[deps.Revise]]
+deps = ["CodeTracking", "FileWatching", "JuliaInterpreter", "LibGit2", "LoweredCodeUtils", "OrderedCollections", "REPL", "Requires", "UUIDs", "Unicode"]
+git-tree-sha1 = "2d155af8d27cc03e39771aac4468695bcedb6ca7"
+uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
+version = "3.10.0"
+
+    [deps.Revise.extensions]
+    DistributedExt = "Distributed"
+
+    [deps.Revise.weakdeps]
+    Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[deps.Rsvg]]
 deps = ["Cairo", "Glib_jll", "Librsvg_jll"]
@@ -1875,7 +2030,7 @@ version = "0.17.4+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.13.1+1"
+version = "5.15.0+0"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1919,6 +2074,7 @@ version = "4.1.0+0"
 """
 
 # ╔═╡ Cell order:
+# ╟─5058e4eb-c53d-4468-b7ff-4f04ded96418
 # ╟─95ec4140-9147-11ef-2af4-5528bad0e6f5
 # ╟─f4366cf6-2be0-42b8-96c4-120be3f5c25e
 # ╟─61dc1905-338f-4bfd-a158-2f6bacff769e
@@ -1942,7 +2098,9 @@ version = "4.1.0+0"
 # ╟─9e898325-e9e2-45bd-af74-3dd86f00f7b5
 # ╟─bcf7667f-f99b-4d10-af84-5d3879f1db5d
 # ╟─2a7e5096-1e8d-4506-96d2-86de0a7d39aa
+# ╟─e86a57ae-3945-4cbf-b2e4-a96f4b5295e0
 # ╟─eb18303f-3dfb-4b87-90f2-f6dc542d7221
+# ╟─6622f9f0-cecc-476e-9d49-7d651f433b9f
 # ╟─6aa690e9-389f-4398-abae-b95060db4d90
 # ╟─9cb90e76-3bb5-41ff-bc79-c4949400d904
 # ╟─6712c883-b407-47e1-a666-4de05f8f8d6e
@@ -1958,6 +2116,7 @@ version = "4.1.0+0"
 # ╟─225e58ba-b78d-4a0a-be4f-ad642c879b93
 # ╟─a21fbc70-9137-4d0e-8c8c-cbdc5269778f
 # ╟─8eafcfed-9771-4d99-b0c5-bd75a6dab012
+# ╟─6800afbf-8ac6-4308-b4cc-b37da57e42c1
 # ╟─55435b26-7fc3-4c8b-8013-6fd4fb65a08e
 # ╟─bcbb3db2-85b3-4cb0-9309-f5c032d14da5
 # ╠═d558636d-c714-4033-ae73-5b92c3cdedf3
@@ -1980,6 +2139,7 @@ version = "4.1.0+0"
 # ╟─b7583418-f4fb-4c63-b421-b5b9af269768
 # ╟─d014e6aa-92f6-4ca1-be47-516565d1bb20
 # ╟─6fc13413-53de-4c75-9b9e-620e0b7f8a1f
+# ╟─d05e6f0f-0081-4fb6-91e9-ac2f58beda4a
 # ╟─a3efd921-eb14-4901-9d6c-800cc812fe02
 # ╟─b9caae1a-38aa-4d01-9cda-3d6782fb0e03
 # ╟─4b61363d-87c9-4755-8286-44df34e9dd6a
@@ -2001,6 +2161,10 @@ version = "4.1.0+0"
 # ╟─8d6ec2b3-997e-4df5-a3b2-c1dffa53d0ec
 # ╟─25b79953-fd7c-46c1-b760-d57c09910981
 # ╟─45efc71d-d5f8-474e-9b89-e72fac7110fd
+# ╟─a14e505e-2e4a-4c73-8133-7560ba58916b
+# ╟─9a8eef1b-27c0-4d57-a389-53708ade9058
+# ╟─728f5fdf-77a5-46c7-b3ee-01064ef1b7e2
+# ╟─c8923675-e73e-4621-82b9-966d8b003b97
 # ╟─04e9b912-6712-4290-acc4-f24bb27a1469
 # ╟─c1437dcc-22cb-424f-9b8e-326172f82d86
 # ╟─8b78360a-21cb-4574-a84d-46ea4d0cedb1
@@ -2026,7 +2190,5 @@ version = "4.1.0+0"
 # ╠═579a203b-e6f7-4190-b874-18b00a5c3f77
 # ╠═93200f46-7c8f-4362-a445-43c57b50a2d2
 # ╠═7e27c349-ee76-46bd-b1c2-a9ce54974e10
-# ╠═cb482044-80dc-4ee1-8b06-5940477e9842
-# ╠═b4ca4ce4-2c1a-42e7-9116-dff9b11de7ee
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
