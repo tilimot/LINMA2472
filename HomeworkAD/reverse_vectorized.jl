@@ -384,4 +384,72 @@ end
 
 gradient(f, x) = gradient!(f, zero(x), x)
 
+
+
+
+
+################ SECOND ORDER
+function gradient_for_hessian(f, x::Flatten)
+    # Converts each component to a VectNode
+    x_nodes = isa(x, Flatten{<:VectNode}) ? x : Flatten(VectNode.(x.components))
+    # Function calculation
+    expr = f(x_nodes)
+    # Backprop
+    backward!(expr)
+    
+    # Collect all derivatives into a single vector
+    grad = vcat([vec(x_nodes.components[i].derivative) for i in eachindex(x_nodes.components)]...)
+    
+    # Wrap the concatenated derivatives into a single Flatten component
+    return Flatten([grad])
+
+end
+
+
+function zero(x::VectNode)
+	return zeros(x.value)
+end
+function zero(x::Flatten{VectNode})
+    return Flatten([
+        zeros(size(comp.value)) for comp in x.components
+    ])
+end
+
+function zero(x::Matrix{Float64})
+	return zeros(size(x))
+end
+function zero(x::Float64)
+	return 0
+end
+
+function zero(x::Vector{Float64})
+	return zeros(size(x))
+end
+
+# Jacobian-vector product `J(x) * tx`
+function pushforward!(f, x::Flatten, i)
+	
+    for j in 1:length(x.components)
+    if j == i
+        x.components[j].derivative = fill!(similar(x.components[j].value), 1.0)
+    else
+        x.components[j].derivative = fill!(similar(x.components[j].value), 0.0)
+    end
+end
+    return f(x)
+end
+
+
+# We don't know in advance the dimension of the output of `F`
+# so we cannot easily redirect to a `jacobian!`
+function jacobian(f, x)
+    return reduce(hcat, map(i -> pushforward!(f, x, i), eachindex(x.components)))
+end
+
+function hessian(f, x)
+	x_nodes = Flatten(VectNode.(x.components))
+    return jacobian(z -> gradient_for_hessian(f, z), x_nodes)
+end
+
+
 end
