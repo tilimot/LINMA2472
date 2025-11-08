@@ -1,19 +1,23 @@
 include("flatten.jl")
 
 module VectReverse
-#const relu = Main.relu
+const relu = Main.relu
 const Flatten = Main.Flatten
 mutable struct VectNode
 	value::Any
 	derivative::Any
 	parents::Vector{Tuple{VectNode, Function}}
 end
-
-
-relu(x) = max(x, 0)
+import Base: zero
+zero(x::VectNode) = VectNode(
+    zero(x.value),      # même shape que value, mais rempli de zéros
+    zero(x.derivative), # même shape que derivative, mais rempli de zéros
+    Tuple{VectNode, Function}[]  # pas de parents
+)
 # For scalars
 VectNode(x::Number) = VectNode(x, zero(x), Vector{Tuple{VectNode,Function}}())
-
+VectNode(value, derivative) = VectNode(value, derivative, Tuple{VectNode, Function}[])
+VectNode(x::VectNode) = x
 # For vectors / matrix
 VectNode(x::AbstractArray) = VectNode(x, zeros(size(x)), Vector{Tuple{VectNode,Function}}())
 
@@ -325,6 +329,10 @@ function Base.broadcasted(::typeof(/), x::VectNode, y::VectNode)
 	VectNode(x.value ./ y.value, zero(x.value), [(x, Δ -> Δ ./ y.value), (y, Δ -> -Δ .* x.value ./ (y.value .^ 2))])
 end
 
+
+function Base.:*(x::Vector{Float64}, y::Vector{Float64})
+    return dot(x, y)
+end
 # softmax for VectNode (row-wise softmax)
 import ..softmax # defines new methods for the existing softmax function instead of defining a new VectReverse.softmax functions
 function softmax(x::VectNode)
@@ -336,14 +344,19 @@ function softmax(x::VectNode)
 end
 
 
+Base.ndims(x::VectNode) = ndims(x.value)
 Base.iterate(n::VectNode) = Base.iterate(n.value)
 Base.iterate(n::VectNode, s) = Base.iterate(n.value, s)
 Base.getindex(n::VectNode, i...) = getindex(n.value, i...)
 Base.eachindex(n::VectNode) = eachindex(n.value)
 Base.length(n::VectNode) = length(n.value)
 Base.size(n::VectNode) = size(n.value)
-
-
+#=
+function copyto!(dest::VectNode, src)
+    copyto!(dest.value, src)
+    return dest
+end
+=#
 function topo_sort!(visited, topo, f::VectNode)
 	if !(f in visited)
 		push!(visited, f)
@@ -386,71 +399,39 @@ end
 gradient(f, x) = gradient!(f, zero(x), x)
 
 
-
-
-
-################ SECOND ORDER
-function gradient_for_hessian(f, x::Flatten)
-    # Converts each component to a VectNode
-    x_nodes = isa(x, Flatten{<:VectNode}) ? x : Flatten(VectNode.(x.components))
-    # Function calculation
-    expr = f(x_nodes)
-    # Backprop
-    backward!(expr)
-    
-    # Collect all derivatives into a single vector
-    grad = vcat([vec(x_nodes.components[i].derivative) for i in eachindex(x_nodes.components)]...)
-    
-    # Wrap the concatenated derivatives into a single Flatten component
-    return Flatten([grad])
-
-end
-
-
-function zero(x::VectNode)
-	return zeros(x.value)
-end
-function zero(x::Flatten{VectNode})
-    return Flatten([
-        zeros(size(comp.value)) for comp in x.components
-    ])
-end
-
-function zero(x::Matrix{Float64})
-	return zeros(size(x))
-end
-function zero(x::Float64)
-	return 0
-end
-
-function zero(x::Vector{Float64})
-	return zeros(size(x))
+function onehot(x::Flatten, i::Integer)
+    tx = zero(x)                     # même structure que x, rempli de zéros
+    tx.components[i] .= 1.0          # met un 1 au bon composant
+    return tx
 end
 
 # Jacobian-vector product `J(x) * tx`
-function pushforward!(f, x::Flatten, i)
-	
-    for j in 1:length(x.components)
-    if j == i
-        x.components[j].derivative = fill!(similar(x.components[j].value), 1.0)
-    else
-        x.components[j].derivative = fill!(similar(x.components[j].value), 0.0)
-    end
-end
-    return f(x)
-end
-
-
-# We don't know in advance the dimension of the output of `F`
-# so we cannot easily redirect to a `jacobian!`
-function jacobian(f, x)
-    return reduce(hcat, map(i -> pushforward!(f, x, i), eachindex(x.components)))
+# 1) Pushforward sur Flatten: J(x) * tx
+function pushforward(f, x::Flatten, tx::Flatten)
+    # Création d’un Flatten de VectNodes vectoriels
+    dW = Flatten([
+        VectNode(x.components[i], tx.components[i])
+        for i in eachindex(x.components)
+    ])
+    
+    y = f(dW)  # Appel du f qui fait la backprop reverse
+    return Flatten([
+        x_i.derivative for x_i in y.components
+    ])
 end
 
-function hessian(f, x)
-	x_nodes = Flatten(VectNode.(x.components))
-    return jacobian(z -> gradient_for_hessian(f, z), x_nodes)
+# 2) Colonne i de la Jacobienne
+function jacobian(f, x::Flatten, i::Integer)
+    return pushforward(f, x, onehot(x, i))  # onehot marche car Flatten a getindex/setindex!
 end
+
+# 3) Jacobienne complète
+function jacobian(f, x::Flatten)
+    return reduce(hcat, map(i -> jacobian(f, x, i), eachindex(x)))
+end
+
+# 4) Hessienne = Jacobienne du gradient (forward-over-reverse)
+hessian(f, x::Flatten) = jacobian(z -> gradient(f, z), x)
 
 
 end
