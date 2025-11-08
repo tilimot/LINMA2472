@@ -344,19 +344,46 @@ function softmax(x::VectNode)
 end
 
 
-Base.ndims(x::VectNode) = ndims(x.value)
+Base.ndims(::Type{VectNode}) = 0  # Car VectNode est un type wrapper
+Base.ndims(x::VectNode) = ndims(x.value)  # Délègue à la valeur contenue
 Base.iterate(n::VectNode) = Base.iterate(n.value)
 Base.iterate(n::VectNode, s) = Base.iterate(n.value, s)
 Base.getindex(n::VectNode, i...) = getindex(n.value, i...)
 Base.eachindex(n::VectNode) = eachindex(n.value)
 Base.length(n::VectNode) = length(n.value)
 Base.size(n::VectNode) = size(n.value)
-#=
-function copyto!(dest::VectNode, src)
-    copyto!(dest.value, src)
+
+# Pour la fonction ones avec une matrice
+Base.ones(x::Vector{Float64}) = fill(1.0, size(x))
+Base.ones(x::Matrix{Float64}) = fill(1.0, size(x))
+Base.ones(x::Matrix{Vector}) = fill(1.0, size(x))
+# Pour ones avec un VectNode
+Base.ones(x::VectNode) = VectNode(ones(x.value), zero(x.value), Tuple{VectNode, Function}[])
+
+# Pour ones avec une taille donnée (si nécessaire)
+Base.ones(dims::Tuple{Int,Int}) = fill(1.0, dims)
+
+# Implémentation de copyto! pour le broadcasting avec VectNode
+function Base.copyto!(dest::VectNode, bc::Broadcast.Broadcasted{<:Any})
+    # Copie les valeurs
+    copyto!(dest.value, bc)
+    
+    # Réinitialise les dérivées et parents
+    dest.derivative = zero(dest.value)
+    empty!(dest.parents)
+    
+    # Si le broadcast implique des VectNodes, nous devons ajouter les relations de parenté
+    args = bc.args
+    for arg in args
+        if arg isa VectNode
+            # La dérivée dépend de l'opération de broadcast
+            push!(dest.parents, (arg, Δ -> Δ))
+        end
+    end
+    
     return dest
 end
-=#
+
 function topo_sort!(visited, topo, f::VectNode)
 	if !(f in visited)
 		push!(visited, f)
@@ -401,7 +428,7 @@ gradient(f, x) = gradient!(f, zero(x), x)
 
 function onehot(x::Flatten, i::Integer)
     tx = zero(x)                     # même structure que x, rempli de zéros
-    tx.components[i] .= 1.0          # met un 1 au bon composant
+    tx.components[i] .= ones(tx.components[i])
     return tx
 end
 
