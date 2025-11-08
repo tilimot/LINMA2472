@@ -6,7 +6,7 @@ include(joinpath(LabAD, "test", "test.jl"))
 include(joinpath(LabAD, "solution", "forward.jl"))
 
 ## First order
-include(joinpath(@__DIR__, "reverse_vectorized.jl"))
+#include(joinpath(@__DIR__, "reverse_vectorized.jl"))Au final, la première structure que tu as créée était parfaite, celle avec les DualVectNode qui j'imagine permettent de faire des dual sur des 
 # run_gradient_tests(Forward.gradient, VectReverse.gradient)
 
 ## Second order

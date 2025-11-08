@@ -1,4 +1,6 @@
 include("flatten.jl")
+import ..Forward: Dual, pushforward, jacobian, hessian
+
 
 module VectReverse
 const relu = Main.relu
@@ -432,33 +434,275 @@ function onehot(x::Flatten, i::Integer)
     return tx
 end
 
-# Jacobian-vector product `J(x) * tx`
-# 1) Pushforward sur Flatten: J(x) * tx
+
+######################## Second order ###################
+# ============================================================================
+# DUAL VECTORISÉ POUR FORWARD MODE
+# ============================================================================
+
+# Dual vectorisé : contient des valeurs et dérivées qui sont des arrays/matrices
+struct VectDual
+    value::Union{AbstractArray, Number}
+    tangent::Union{AbstractArray, Number}
+    
+    # Constructeur interne pour éviter la récursion infinie
+    VectDual(v, t) = new(v, t)
+end
+
+Base.broadcastable(d::VectDual) = Ref(d)
+Base.zero(::VectDual) = VectDual(0.0, 0.0)
+Base.zero(::Type{VectDual}) = VectDual(0.0, 0.0)
+Base.one(::VectDual) = VectDual(1.0, 0.0)
+Base.size(d::VectDual) = size(d.value)
+Base.length(d::VectDual) = length(d.value)
+
+# ============================================================================
+# OPÉRATIONS ARITHMÉTIQUES POUR VectDual
+# ============================================================================
+
+# Addition
+Base.:+(x::VectDual, y::VectDual) = VectDual(x.value .+ y.value, x.tangent .+ y.tangent)
+Base.:+(x::VectDual, y::Union{AbstractArray,Number}) = VectDual(x.value .+ y, x.tangent)
+Base.:+(x::Union{AbstractArray,Number}, y::VectDual) = VectDual(x .+ y.value, y.tangent)
+
+Base.broadcasted(::typeof(+), x::VectDual, y::VectDual) = VectDual(x.value .+ y.value, x.tangent .+ y.tangent)
+Base.broadcasted(::typeof(+), x::VectDual, y::Union{AbstractArray,Number}) = VectDual(x.value .+ y, x.tangent)
+Base.broadcasted(::typeof(+), x::Union{AbstractArray,Number}, y::VectDual) = VectDual(x .+ y.value, y.tangent)
+
+# Soustraction
+Base.:-(x::VectDual, y::VectDual) = VectDual(x.value .- y.value, x.tangent .- y.tangent)
+Base.:-(x::VectDual, y::Union{AbstractArray,Number}) = VectDual(x.value .- y, x.tangent)
+Base.:-(x::Union{AbstractArray,Number}, y::VectDual) = VectDual(x .- y.value, .-y.tangent)
+Base.:-(x::VectDual) = VectDual(-x.value, -x.tangent)
+
+Base.broadcasted(::typeof(-), x::VectDual, y::VectDual) = VectDual(x.value .- y.value, x.tangent .- y.tangent)
+Base.broadcasted(::typeof(-), x::VectDual, y::Union{AbstractArray,Number}) = VectDual(x.value .- y, x.tangent)
+Base.broadcasted(::typeof(-), x::Union{AbstractArray,Number}, y::VectDual) = VectDual(x .- y.value, .-y.tangent)
+
+# Multiplication matricielle
+Base.:*(A::AbstractMatrix, x::VectDual) = VectDual(A * x.value, A * x.tangent)
+Base.:*(x::VectDual, A::AbstractMatrix) = VectDual(x.value * A, x.tangent * A)
+Base.:*(x::VectDual, y::VectDual) = VectDual(x.value * y.value, x.tangent * y.value + x.value * y.tangent)
+
+# Multiplication scalaire
+Base.:*(α::Number, x::VectDual) = VectDual(α * x.value, α * x.tangent)
+Base.:*(x::VectDual, α::Number) = VectDual(x.value * α, x.tangent * α)
+
+# Multiplication élément par élément
+Base.broadcasted(::typeof(*), x::VectDual, y::VectDual) = VectDual(x.value .* y.value, x.tangent .* y.value .+ x.value .* y.tangent)
+Base.broadcasted(::typeof(*), x::VectDual, y::Union{AbstractArray,Number}) = VectDual(x.value .* y, x.tangent .* y)
+Base.broadcasted(::typeof(*), x::Union{AbstractArray,Number}, y::VectDual) = VectDual(x .* y.value, x .* y.tangent)
+
+# Division
+Base.:/(x::VectDual, α::Number) = VectDual(x.value / α, x.tangent / α)
+
+Base.broadcasted(::typeof(/), x::VectDual, y::VectDual) = VectDual(
+    x.value ./ y.value,
+    (x.tangent .* y.value .- x.value .* y.tangent) ./ (y.value .^ 2)
+)
+Base.broadcasted(::typeof(/), x::VectDual, y::Union{AbstractArray,Number}) = VectDual(x.value ./ y, x.tangent ./ y)
+Base.broadcasted(::typeof(/), x::Union{AbstractArray,Number}, y::VectDual) = VectDual(
+    x ./ y.value,
+    .-x .* y.tangent ./ (y.value .^ 2)
+)
+
+# Puissance
+Base.broadcasted(::typeof(^), x::VectDual, n::Number) = VectDual(
+    x.value .^ n,
+    n .* (x.value .^ (n - 1)) .* x.tangent
+)
+
+Base.broadcasted(::typeof(Base.literal_pow), ::typeof(^), x::VectDual, ::Val{n}) where {n} = 
+    Base.broadcasted(^, x, n)
+
+# ============================================================================
+# FONCTIONS SPÉCIALES
+# ============================================================================
+
+# Tanh
+Base.broadcasted(::typeof(tanh), x::VectDual) = VectDual(
+    tanh.(x.value),
+    (1 .- tanh.(x.value).^2) .* x.tangent
+)
+
+# ReLU
+Base.broadcasted(::typeof(relu), x::VectDual) = VectDual(
+    max.(x.value, 0.0),
+    @. ifelse(x.value >= 0.0, 1.0, 0.0) * x.tangent
+)
+
+# Identity
+Base.broadcasted(::typeof(identity), x::VectDual) = VectDual(identity.(x.value), x.tangent)
+
+# Exponential
+Base.broadcasted(::typeof(exp), x::VectDual) = VectDual(
+    exp.(x.value),
+    exp.(x.value) .* x.tangent
+)
+
+# Logarithm
+Base.broadcasted(::typeof(log), x::VectDual) = VectDual(
+    log.(x.value),
+    x.tangent ./ x.value
+)
+
+# Sum
+Base.sum(x::VectDual) = VectDual(sum(x.value), sum(x.tangent))
+
+Base.sum(x::VectDual; dims=2) = VectDual(
+    Base.sum(x.value, dims=dims),
+    Base.sum(x.tangent, dims=dims)
+)
+
+# Maximum
+Base.maximum(x::VectDual; dims=2) = begin
+    mx = Base.maximum(x.value, dims=dims)
+    mask = x.value .== mx
+    VectDual(mx, Base.sum(mask .* x.tangent, dims=dims))
+end
+
+# Softmax
+function softmax(x::VectDual)
+    mx = Base.maximum(x.value, dims=2)
+    exps = exp.(x.value .- mx)
+    sums = Base.sum(exps, dims=2)
+    s = exps ./ sums
+    # Jacobien: s .* (tangent - sum(s .* tangent))
+    tangent_out = s .* (x.tangent .- sum(s .* x.tangent, dims=2))
+    VectDual(s, tangent_out)
+end
+
+# ============================================================================
+# SUPPORT POUR FLATTEN
+# ============================================================================
+
+function Base.:*(A::Flatten{<:VectDual}, X::AbstractMatrix)
+    Flatten(map(a -> a * X, A.components))
+end
+
+function Base.:*(X::AbstractMatrix, A::Flatten{<:VectDual})
+    Flatten(map(a -> X * a, A.components))
+end
+
+# ============================================================================
+# PUSHFORWARD CORRIGÉ (FORWARD MODE)
+# ============================================================================
+
+# Fonction auxiliaire : extraire les valeurs d'un Flatten de VectDual
+function extract_values(x::Flatten)
+    if eltype(x.components) <: VectDual
+        return Flatten([comp.value for comp in x.components])
+    else
+        return x
+    end
+end
+
+# Fonction auxiliaire : extraire les tangentes d'un Flatten de VectDual
+function extract_tangents(x::Flatten)
+    return Flatten([comp.tangent for comp in x.components])
+end
+
+# Pushforward avec VectDual (forward mode pur)
 function pushforward(f, x::Flatten, tx::Flatten)
-    # Création d’un Flatten de VectNodes vectoriels
-    dW = Flatten([
-        VectNode(x.components[i], tx.components[i])
+    # Créer un Flatten de VectDual (forward mode)
+    dual_input = Flatten([
+        VectDual(x.components[i], tx.components[i])
         for i in eachindex(x.components)
     ])
     
-    y = f(dW)  # Appel du f qui fait la backprop reverse
-    return Flatten([
-        x_i.derivative for x_i in y.components
-    ])
+    # Évaluer f avec les dual numbers (propagation forward)
+    y = f(dual_input)
+    
+    # Extraire les tangentes du résultat
+    if y isa VectDual
+        return y.tangent
+    elseif y isa Flatten
+        # Vérifier si les composants sont des VectDual
+        if !isempty(y.components) && y.components[1] isa VectDual
+            return extract_tangents(y)
+        else
+            # Si c'est déjà un Flatten de valeurs numériques, le retourner tel quel
+            return y
+        end
+    else
+        error("Unexpected output type from f: $(typeof(y))")
+    end
 end
 
-# 2) Colonne i de la Jacobienne
-function jacobian(f, x::Flatten, i::Integer)
-    return pushforward(f, x, onehot(x, i))  # onehot marche car Flatten a getindex/setindex!
+# ============================================================================
+# JACOBIAN ET HESSIAN
+# ============================================================================
+
+# Fonction auxiliaire pour aplatir un Flatten en vecteur
+function flatten_to_vector(x::Flatten)
+    return reduce(vcat, [vec(comp) for comp in x.components])
 end
 
-# 3) Jacobienne complète
+# Fonction auxiliaire : créer un vecteur de base e_i pour un Flatten
+function create_basis_vector(x::Flatten, global_idx::Int)
+    result = zero(x)
+    offset = 0
+    for i in eachindex(x.components)
+        comp_len = length(x.components[i])
+        if global_idx <= offset + comp_len
+            local_idx = global_idx - offset
+            flat_comp = vec(result.components[i])
+            flat_comp[local_idx] = 1.0
+            result.components[i] .= reshape(flat_comp, size(x.components[i]))
+            return result
+        end
+        offset += comp_len
+    end
+    error("Index out of bounds: $global_idx > $(offset)")
+end
+
+# Wrapper pour gradient qui accepte VectDual et retourne VectDual
+function gradient_dual(f, x::Flatten)
+    # Extraire les valeurs pour le gradient (reverse mode sur valeurs)
+    x_values = extract_values(x)
+    
+    # Calculer le gradient (reverse mode) - retourne un Flatten de valeurs numériques
+    grad = gradient(f, x_values)
+    
+    # Si x contient des VectDual, créer un Flatten de VectDual pour le gradient
+    if !isempty(x.components) && x.components[1] isa VectDual
+        # Propager les tangentes à travers le gradient
+        tangents = extract_tangents(x)
+        
+        # Pour chaque composant du gradient, créer un VectDual
+        return Flatten([
+            VectDual(grad.components[i], tangents.components[i])
+            for i in eachindex(grad.components)
+        ])
+    else
+        return grad
+    end
+end
+
+# Jacobian : colonne i (i est un index GLOBAL dans le vecteur aplati)
+function jacobian_column(f, x::Flatten, i::Integer)
+    basis = create_basis_vector(x, i)
+    return pushforward(f, x, basis)
+end
+
+# Jacobian complète
 function jacobian(f, x::Flatten)
-    return reduce(hcat, map(i -> jacobian(f, x, i), eachindex(x)))
+    n = length(x)  # Nombre total d'éléments dans le vecteur aplati
+    cols = [jacobian_column(f, x, i) for i in 1:n]
+    # Aplatir chaque colonne et concaténer
+    return reduce(hcat, [flatten_to_vector(col) for col in cols])
 end
 
-# 4) Hessienne = Jacobienne du gradient (forward-over-reverse)
-hessian(f, x::Flatten) = jacobian(z -> gradient(f, z), x)
+# Hessian = Jacobian du gradient (forward-on-reverse)
+function hessian(f, x)
+    # La fonction passée à jacobian doit gérer VectDual
+    return jacobian(z -> gradient_dual(f, z), x)
+end
 
-
+# Hessian-vector product
+function hvp(f, x, v)
+    # v est un Flatten, on calcule H*v via forward-on-reverse
+    grad_at_v = pushforward(z -> gradient_dual(f, z), x, v)
+    return flatten_to_vector(grad_at_v)
+end
 end
