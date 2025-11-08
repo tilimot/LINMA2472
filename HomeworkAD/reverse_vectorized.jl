@@ -425,6 +425,21 @@ end
 
 gradient(f, x) = gradient!(f, zero(x), x)
 
+################# SECOND ORDER
+function gradient2!(f, g::Flatten, x::Flatten)
+	# Converts each component to a VectNode
+	
+	# function calculation
+	expr = f(x)
+	# Backprop
+	backward!(expr)
+	for i in eachindex(x.components)
+		g.components[i] .= x.components[i].derivative
+	end
+	return g
+end
+
+gradient2(f, x) = gradient2!(f, zero(x), x)
 
 function onehot(x::Flatten, i::Integer)
     tx = zero(x)                     # même structure que x, rempli de zéros
@@ -454,11 +469,11 @@ end
 
 # 3) Jacobienne complète
 function jacobian(f, x::Flatten)
-    return reduce(hcat, map(i -> jacobian(f, x, i), eachindex(x)))
+    return reduce(hcat, map(i -> jacobian(f, x, i), eachindex(x.components)))
 end
 
 # 4) Hessienne = Jacobienne du gradient (forward-over-reverse)
-hessian(f, x::Flatten) = jacobian(z -> gradient(f, z), x)
+hessian(f, x::Flatten) = jacobian(z -> gradient2(f, z), x)
 
 
 end
