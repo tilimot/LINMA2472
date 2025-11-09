@@ -1,5 +1,7 @@
 include("flatten.jl")
 
+
+
 module VectReverse
 const relu = Main.relu
 const Flatten = Main.Flatten
@@ -8,6 +10,7 @@ mutable struct VectNode
 	derivative::Any
 	parents::Vector{Tuple{VectNode, Function}}
 end
+
 import Base: zero
 zero(x::VectNode) = VectNode(
     zero(x.value),      # même shape que value, mais rempli de zéros
@@ -20,89 +23,97 @@ VectNode(value, derivative) = VectNode(value, derivative, Tuple{VectNode, Functi
 VectNode(x::VectNode) = x
 # For vectors / matrix
 VectNode(x::AbstractArray) = VectNode(x, zeros(size(x)), Vector{Tuple{VectNode,Function}}())
-
+function VectNode(value)
+    return VectNode(
+        value,
+        zero(value),                           # même type que value (Matrix ou VectDual)
+        Tuple{VectNode, Function}[]            # tableau vide de parents
+    )
+end
+# For `tanh.(X)`
 # For `tanh.(X)`
 function Base.broadcasted(::typeof(tanh), x::VectNode)
-	VectNode(
-		tanh.(x.value),
-		zero(x.value),
-		[(x, Δ -> (1 .- tanh.(x.value).^2) .* Δ)]
-	)
+    VectNode(
+        tanh.(x.value),
+        zero(x.value),
+        [(x, Δ -> Δ isa VectDual ? VectDual((1 .- tanh.(x.value).^2) .* Δ.value, (1 .- tanh.(x.value).^2) .* Δ.tangent) : (1 .- tanh.(x.value).^2) .* Δ)]
+    )
 end
 
 # For ReLU
 function Base.broadcasted(::typeof(relu), x::VectNode)
     y = max.(x.value, 0.0)
-    dydx = @. ifelse(x.value >= 0.0, 1.0, 0.0) # The >= ensures gradient is 0 at 0 -> fixed the error
-
-    return VectNode(
+    dydx = @. ifelse(x.value >= 0.0, 1.0, 0.0)
+    VectNode(
         y,
         zero(y),
-        [(x, Δ -> dydx .* Δ)]  
+        [(x, Δ -> Δ isa VectDual ? VectDual(dydx .* Δ.value, dydx .* Δ.tangent) : dydx .* Δ)]
     )
 end
 
 relu_activation(x) = relu.(x)
 
 # For `X .* Y`
-function Base.broadcasted(op::Function, x::VectNode, y::VectNode)
+function Base.broadcasted(::typeof(*), x::VectNode, y::VectNode)
     VectNode(
-		x.value .* y.value,
-		zero(x.value),
-		[(x, Δ -> Δ .* y.value), (y, Δ -> x.value .* Δ)]
-	)
+        x.value .* y.value,
+        zero(x.value),
+        [(x, Δ -> Δ isa VectDual ? VectDual(Δ.value .* y.value, Δ.tangent .* y.value) : Δ .* y.value),
+         (y, Δ -> Δ isa VectDual ? VectDual(x.value .* Δ.value, x.value .* Δ.tangent) : x.value .* Δ)]
+    )
 end
 
 # For `X .* Y` where `Y` is a constant
-function Base.broadcasted(op::Function, x::VectNode, y::Union{AbstractArray,Number})
+function Base.broadcasted(::typeof(*), x::VectNode, y::Union{AbstractArray,Number})
     VectNode(
-		x.value .* y,
-		zero(x.value),
-		[(x, Δ -> Δ .* y)]
-	)
+        x.value .* y,
+        zero(x.value),
+        [(x, Δ -> Δ isa VectDual ? VectDual(Δ.value .* y, Δ.tangent .* y) : Δ .* y)]
+    )
 end
 
 # For `X .* Y` where `X` is a constant
-function Base.broadcasted(op::Function, x::Union{AbstractArray,Number}, y::VectNode)
+function Base.broadcasted(::typeof(*), x::Union{AbstractArray,Number}, y::VectNode)
     VectNode(
-		x .* y.value,
-		zero(y.value),
-		[(y, Δ -> x .* Δ)]
-	)
+        x .* y.value,
+        zero(y.value),
+        [(y, Δ -> Δ isa VectDual ? VectDual(x .* Δ.value, x .* Δ.tangent) : x .* Δ)]
+    )
 end
 
 # For A*x where A is a matrix and x a VectNode
 function Base.:*(A::AbstractMatrix, x::VectNode)
-	return VectNode(
-		A * x.value,
-		zero(A * x.value),
-		[(x, Δ -> A' * Δ)]
-	)
+    VectNode(
+        A * x.value,
+        zero(A * x.value),
+        [(x, Δ -> Δ isa VectDual ? VectDual(A' * Δ.value, A' * Δ.tangent) : A' * Δ)]
+    )
 end
 
 # For A*x where x is a matrix and A a VectNode
 function Base.:*(A::VectNode, x::AbstractMatrix)
-	return VectNode(
-		A.value * x,
-		zero(A.value * x),
-		[(A, Δ -> Δ * x')]
-	)
+    VectNode(
+        A.value * x,
+        zero(A.value * x),
+        [(A, Δ -> Δ isa VectDual ? VectDual(Δ.value * x', Δ.tangent * x') : Δ * x')]
+    )
 end
 
-# For x * y where both are VectNode (element-wise or matrix depending on values)
+# For x * y where both are VectNode
 function Base.:*(x::VectNode, y::VectNode)
-	return VectNode(
-		x.value * y.value,
-		zero(x.value * y.value),
-		[(x, Δ -> Δ * y.value'), (y, Δ -> x.value' * Δ)]
-	)
+    VectNode(
+        x.value * y.value,
+        zero(x.value * y.value),
+        [(x, Δ -> Δ isa VectDual ? VectDual(Δ.value * y.value', Δ.tangent * y.value') : Δ * y.value'),
+         (y, Δ -> Δ isa VectDual ? VectDual(x.value' * Δ.value, x.value' * Δ.tangent) : x.value' * Δ)]
+    )
 end
 
 function Base.:*(x::VectNode, y::Union{AbstractArray,Number})
     VectNode(
         x.value * y,
         zero(x.value * y),
-        [(x, Δ -> Δ * y')]
+        [(x, Δ -> Δ isa VectDual ? VectDual(Δ.value * y', Δ.tangent * y') : Δ * y')]
     )
 end
 
@@ -110,7 +121,7 @@ function Base.:*(x::Union{AbstractArray,Number}, y::VectNode)
     VectNode(
         x * y.value,
         zero(x * y.value),
-        [(y, Δ -> x' * Δ)]
+        [(y, Δ -> Δ isa VectDual ? VectDual(x' * Δ.value, x' * Δ.tangent) : x' * Δ)]
     )
 end
 
@@ -137,62 +148,63 @@ end
 
 # For 'X./Y'
 function Base.broadcasted(::typeof(/), x::VectNode, y::VectNode)
-	VectNode(
-		x.value ./ y.value,
-		zero(x.value),
-		[(x, Δ -> Δ ./ y.value), (y, Δ -> -Δ .* x.value ./ (y.value .^ 2))]
-	)
+    VectNode(
+        x.value ./ y.value,
+        zero(x.value),
+        [(x, Δ -> Δ isa VectDual ? VectDual(Δ.value ./ y.value, Δ.tangent ./ y.value) : Δ ./ y.value), 
+         (y, Δ -> Δ isa VectDual ? VectDual(-Δ.value .* x.value ./ (y.value .^ 2), -Δ.tangent .* x.value ./ (y.value .^ 2)) : -Δ .* x.value ./ (y.value .^ 2))]
+    )
 end
 
 # For `X ./ Y` where `Y` is a constant
 function Base.broadcasted(::typeof(/), x::VectNode, y::Union{AbstractArray,Number})
-	VectNode(
-		x.value ./ y,
-		zero(x.value),
-		[(x, Δ -> Δ ./ y)]
-	)
+    VectNode(
+        x.value ./ y,
+        zero(x.value),
+        [(x, Δ -> Δ isa VectDual ? VectDual(Δ.value ./ y, Δ.tangent ./ y) : Δ ./ y)]
+    )
 end
 
 # For `X ./ Y` where `X` is a constant
 function Base.broadcasted(::typeof(/), x::Union{AbstractArray,Number}, y::VectNode)
-	VectNode(
-		x ./ y.value,
-		zero(y.value),
-		[(y, Δ -> -Δ .* x ./ (y.value .^ 2))]
-	)
+    VectNode(
+        x ./ y.value,
+        zero(y.value),
+        [(y, Δ -> Δ isa VectDual ? VectDual(-Δ.value .* x ./ (y.value .^ 2), -Δ.tangent .* x ./ (y.value .^ 2)) : -Δ .* x ./ (y.value .^ 2))]
+    )
 end
 
 # For `x .^ 2`
 function Base.broadcasted(::typeof(Base.literal_pow), ::typeof(^), x::VectNode, ::Val{y}) where {y}
-	Base.broadcasted(^, x, y)
+    Base.broadcasted(^, x, y)
 end
 
 # For `X .^ y'
 function Base.broadcasted(::typeof(^), x::VectNode, y::VectNode)
-	VectNode(
-		x.value .^ y.value,
-		zero(x.value),
-		[(x, Δ -> Δ .* (y.value .* (x.value .^ (y.value .- 1)))), 
-		 (y, Δ -> Δ .* (log.(x.value) .* (x.value .^ y.value)))]
-	)
+    VectNode(
+        x.value .^ y.value,
+        zero(x.value),
+        [(x, Δ -> Δ isa VectDual ? VectDual(y.value .* (x.value .^ (y.value .- 1)) .* Δ.value, y.value .* (x.value .^ (y.value .- 1)) .* Δ.tangent) : Δ .* (y.value .* (x.value .^ (y.value .- 1)))), 
+         (y, Δ -> Δ isa VectDual ? VectDual(log.(x.value) .* (x.value .^ y.value) .* Δ.value, log.(x.value) .* (x.value .^ y.value) .* Δ.tangent) : Δ .* (log.(x.value) .* (x.value .^ y.value)))]
+    )
 end
 
 # For `X .^ y` where `y` is a constant
 function Base.broadcasted(::typeof(^), x::VectNode, y::Union{AbstractArray,Number})
-	VectNode(
-		x.value .^ y,
-		zero(x.value),
-		[(x, Δ -> Δ .* (y .* (x.value .^ (y .- 1))))]
-	)
+    VectNode(
+        x.value .^ y,
+        zero(x.value),
+        [(x, Δ -> Δ isa VectDual ? VectDual(y .* (x.value .^ (y .- 1)) .* Δ.value, y .* (x.value .^ (y .- 1)) .* Δ.tangent) : Δ .* (y .* (x.value .^ (y .- 1))))]
+    )
 end
 
 # For `X .^ y` where `X` is a constant
 function Base.broadcasted(::typeof(^), x::Union{AbstractArray,Number}, y::VectNode)
-	VectNode(
-		x .^ y.value,
-		zero(y.value),
-		[(y, Δ -> Δ .* (log.(x) .* (x .^ y.value)))]
-	)
+    VectNode(
+        x .^ y.value,
+        zero(y.value),
+        [(y, Δ -> Δ isa VectDual ? VectDual(log.(x) .* (x .^ y.value) .* Δ.value, log.(x) .* (x .^ y.value) .* Δ.tangent) : Δ .* (log.(x) .* (x .^ y.value)))]
+    )
 end
 
 # For X. + Y
@@ -212,74 +224,72 @@ function Base.broadcasted(::typeof(+), x::VectNode, y::Union{AbstractArray,Numbe
         [(x, Δ -> Δ)]
     )
 end
+
 # For `X .+ Y` where `X` is a constant
 function Base.broadcasted(::typeof(+), x::Union{AbstractArray,Number}, y::VectNode)
-	VectNode(
-		x .+ y.value,
-		zero(y.value),
-		[(y, Δ -> Δ)]
-	)
+    VectNode(
+        x .+ y.value,
+        zero(y.value),
+        [(y, Δ -> Δ)]
+    )
 end
 
 # For `X .- Y`
 function Base.broadcasted(::typeof(-), x::VectNode, y::VectNode)
-	VectNode(
-		x.value .- y.value,
-		zero(x.value),
-		[(x, Δ -> Δ), (y, Δ -> -Δ)]
-	)
+    VectNode(
+        x.value .- y.value,
+        zero(x.value),
+        [(x, Δ -> Δ), (y, Δ -> Δ isa VectDual ? VectDual(-Δ.value, -Δ.tangent) : -Δ)]
+    )
 end
 
 # For `X .- Y` where `Y` is a constant
 function Base.broadcasted(::typeof(-), x::VectNode, y::Union{AbstractArray,Number})
-	VectNode(
-		x.value .- y,
-		zero(x.value),
-		[(x, Δ -> Δ)]
-	)
+    VectNode(
+        x.value .- y,
+        zero(x.value),
+        [(x, Δ -> Δ)]
+    )
 end
 
 # For `X .- Y` where `X` is a constant
 function Base.broadcasted(::typeof(-), x::Union{AbstractArray,Number}, y::VectNode)
-	VectNode(
-		x .- y.value,
-		zero(y.value),
-		[(y, Δ -> -Δ)]
-	)
+    VectNode(
+        x .- y.value,
+        zero(y.value),
+        [(y, Δ -> Δ isa VectDual ? VectDual(-Δ.value, -Δ.tangent) : -Δ)]
+    )
 end
 
-# Non-broadcasted subtraction: support VectNode - array/number, array/number - VectNode, and VectNode - VectNode
+# Non-broadcasted subtraction
 function Base.:-(x::VectNode, y::Union{AbstractArray,Number})
-	VectNode(
-		x.value .- y,
-		zero(x.value),
-		[(x, Δ -> Δ)]
-	)
+    VectNode(
+        x.value .- y,
+        zero(x.value),
+        [(x, Δ -> Δ)]
+    )
 end
 
 function Base.:-(x::Union{AbstractArray,Number}, y::VectNode)
-	VectNode(
-		x .- y.value,
-		zero(y.value),
-		[(y, Δ -> -Δ)]
-	)
+    VectNode(
+        x .- y.value,
+        zero(y.value),
+        [(y, Δ -> Δ isa VectDual ? VectDual(-Δ.value, -Δ.tangent) : -Δ)]
+    )
 end
 
 function Base.:-(x::VectNode, y::VectNode)
-	VectNode(
-		x.value .- y.value,
-		zero(x.value),
-		[(x, Δ -> Δ), (y, Δ -> -Δ)]
-	)
+    VectNode(
+        x.value .- y.value,
+        zero(x.value),
+        [(x, Δ -> Δ), (y, Δ -> Δ isa VectDual ? VectDual(-Δ.value, -Δ.tangent) : -Δ)]
+    )
 end
 
-# Function added to prevent errors on INGInious (but code worked without it on VS code)
 function Base.:-(x::VectNode)
-    # -x.value forward, derivative is -1 times incoming Δ
-    return VectNode(-x.value, zero(x.value), [(x, Δ -> -Δ)])
+    return VectNode(-x.value, zero(x.value), [(x, Δ -> Δ isa VectDual ? VectDual(-Δ.value, -Δ.tangent) : -Δ)])
 end
 
-# Identity
 function Base.broadcasted(::typeof(identity), x::VectNode)
     VectNode(
         identity.(x.value),
@@ -290,51 +300,48 @@ end
 
 import Base: sum
 function Base.sum(v::VectNode)
-	s = sum(v.value)
-	return VectNode(s, zero(s), [(v, Δ -> fill(Δ, size(v.value)))])
+    s = sum(v.value)
+    return VectNode(s, zero(s), [(v, Δ -> Δ isa VectDual ? VectDual(fill(Δ.value, size(v.value)), fill(Δ.tangent, size(v.value))) : fill(Δ, size(v.value)))])
 end
 
 function Base.:/(v::VectNode, n::Number)
-	res = v.value / n
-	return VectNode(res, zero(res), [(v, Δ -> Δ / n)])
+    res = v.value / n
+    return VectNode(res, zero(res), [(v, Δ -> Δ isa VectDual ? VectDual(Δ.value / n, Δ.tangent / n) : Δ / n)])
 end
 
-# Exponential (element-wise) broadcast
 function Base.broadcasted(::typeof(exp), x::VectNode)
-	y = exp.(x.value)
-	VectNode(y, zero(y), [(x, Δ -> Δ .* y)])
+    y = exp.(x.value)
+    return VectNode(y, zero(y), [(x, Δ -> Δ isa VectDual ? VectDual(Δ.value .* y, Δ.tangent .* y) : Δ .* y)])
 end
 
-# Log (element-wise) broadcast
 function Base.broadcasted(::typeof(log), x::VectNode)
-	y = log.(x.value)
-	VectNode(y, zero(y), [(x, Δ -> Δ ./ x.value)])
+    y = log.(x.value)
+    return VectNode(y, zero(y), [(x, Δ -> Δ isa VectDual ? VectDual(Δ.value ./ x.value, Δ.tangent ./ x.value) : Δ ./ x.value)])
 end
 
-# maximum(x; dims=2)
-function Base.maximum(x::VectNode; dims=2) # "Base.maximum" defines a new method for the maximum function instead of defining a new maximum function
-	mx = Base.maximum(x.value, dims=dims)
-	mask = x.value .== mx
-	return VectNode(mx, zero(mx), [(x, Δ -> mask .* Δ)])
+function Base.maximum(x::VectNode; dims=2)
+    mx = Base.maximum(x.value, dims=dims)
+    mask = x.value .== mx
+    return VectNode(mx, zero(mx), [(x, Δ -> Δ isa VectDual ? VectDual(mask .* Δ.value, mask .* Δ.tangent) : mask .* Δ)])
 end
 
-# sum(x; dims=2)
 function Base.sum(x::VectNode; dims=2)
-	s = Base.sum(x.value, dims=dims)
-	return VectNode(s, zero(s), [(x, Δ -> repeat(Δ, 1, size(x.value, 2)))])
+    s = Base.sum(x.value, dims=dims)
+    return VectNode(s, zero(s), [(x, Δ -> Δ isa VectDual ? VectDual(repeat(Δ.value, 1, size(x.value, 2)), repeat(Δ.tangent, 1, size(x.value, 2))) : repeat(Δ, 1, size(x.value, 2)))])
 end
 
-# elementwise division for VectNode ./ VectNode
 function Base.broadcasted(::typeof(/), x::VectNode, y::VectNode)
-	VectNode(x.value ./ y.value, zero(x.value), [(x, Δ -> Δ ./ y.value), (y, Δ -> -Δ .* x.value ./ (y.value .^ 2))])
+    VectNode(x.value ./ y.value, zero(x.value), [
+        (x, Δ -> Δ isa VectDual ? VectDual(Δ.value ./ y.value, Δ.tangent ./ y.value) : Δ ./ y.value),
+        (y, Δ -> Δ isa VectDual ? VectDual(-Δ.value .* x.value ./ (y.value .^ 2), -Δ.tangent .* x.value ./ (y.value .^ 2)) : -Δ .* x.value ./ (y.value .^ 2))
+    ])
 end
 
 
 function Base.:*(x::Vector{Float64}, y::Vector{Float64})
     return dot(x, y)
 end
-# softmax for VectNode (row-wise softmax)
-import ..softmax # defines new methods for the existing softmax function instead of defining a new VectReverse.softmax functions
+
 function softmax(x::VectNode)
 	mx = Base.maximum(x.value, dims=2)
 	exps = exp.(x.value .- mx)
@@ -346,9 +353,9 @@ end
 
 Base.ndims(::Type{VectNode}) = 0  # Car VectNode est un type wrapper
 Base.ndims(x::VectNode) = ndims(x.value)  # Délègue à la valeur contenue
-Base.iterate(n::VectNode) = Base.iterate(n.value)
+#=Base.iterate(n::VectNode) = Base.iterate(n.value)
 Base.iterate(n::VectNode, s) = Base.iterate(n.value, s)
-Base.getindex(n::VectNode, i...) = getindex(n.value, i...)
+Base.getindex(n::VectNode, i...) = getindex(n.value, i...) =#
 Base.eachindex(n::VectNode) = eachindex(n.value)
 Base.length(n::VectNode) = length(n.value)
 Base.size(n::VectNode) = size(n.value)
@@ -363,26 +370,6 @@ Base.ones(x::VectNode) = VectNode(ones(x.value), zero(x.value), Tuple{VectNode, 
 # Pour ones avec une taille donnée (si nécessaire)
 Base.ones(dims::Tuple{Int,Int}) = fill(1.0, dims)
 
-# Implémentation de copyto! pour le broadcasting avec VectNode
-function Base.copyto!(dest::VectNode, bc::Broadcast.Broadcasted{<:Any})
-    # Copie les valeurs
-    copyto!(dest.value, bc)
-    
-    # Réinitialise les dérivées et parents
-    dest.derivative = zero(dest.value)
-    empty!(dest.parents)
-    
-    # Si le broadcast implique des VectNodes, nous devons ajouter les relations de parenté
-    args = bc.args
-    for arg in args
-        if arg isa VectNode
-            # La dérivée dépend de l'opération de broadcast
-            push!(dest.parents, (arg, Δ -> Δ))
-        end
-    end
-    
-    return dest
-end
 
 function topo_sort!(visited, topo, f::VectNode)
 	if !(f in visited)
@@ -404,42 +391,28 @@ function backward!(f::VectNode)
 	visited = Set{VectNode}()
 	topo = VectNode[]
 	topo_sort!(visited, topo, f)
-	f.derivative = one.(f.value)	# Initialization of the output gradient to 1
+	f.derivative = (f.value isa VectDual) ? one(f.value) : one.(f.value)	# Initialization of the output gradient to 1
 	for node in reverse(topo)
 		_backward!(node)
 	end
 end
 
 function gradient!(f, g::Flatten, x::Flatten)
-	# Converts each component to a VectNode
-	x_nodes = Flatten(VectNode.(x.components))
-	# function calculation
-	expr = f(x_nodes)
-	# Backprop
-	backward!(expr)
-	for i in eachindex(x.components)
-		g.components[i] .= x_nodes.components[i].derivative
-	end
-	return g
+    # Convertit chaque composant en VectNode
+    x_nodes = Flatten(VectNode.(x.components))
+    expr = f(x_nodes)
+    backward!(expr)
+    for i in eachindex(x.components)
+        g.components[i] = x_nodes.components[i].derivative
+    end
+    return g
 end
 
-gradient(f, x) = gradient!(f, zero(x), x)
-
-################# SECOND ORDER
-function gradient2!(f, g::Flatten, x::Flatten)
-	# Converts each component to a VectNode
-	
-	# function calculation
-	expr = f(x)
-	# Backprop
-	backward!(expr)
-	for i in eachindex(x.components)
-		g.components[i] .= x.components[i].derivative
-	end
-	return g
+function gradient(f, x::Flatten)
+    g = Flatten([zero(c) for c in x.components])
+    return gradient!(f, g, x)
 end
 
-gradient2(f, x) = gradient2!(f, zero(x), x)
 
 function onehot(x::Flatten, i::Integer)
     tx = zero(x)                     # même structure que x, rempli de zéros
@@ -447,33 +420,246 @@ function onehot(x::Flatten, i::Integer)
     return tx
 end
 
-# Jacobian-vector product `J(x) * tx`
-# 1) Pushforward sur Flatten: J(x) * tx
+
+######################## Second order ###################
+# ============================================================================
+# DUAL VECTORISÉ POUR FORWARD MODE
+# ============================================================================
+
+# Dual vectorisé : contient des valeurs et dérivées qui sont des arrays/matrices
+struct VectDual
+    value::Union{AbstractArray, Number}
+    tangent::Union{AbstractArray, Number}
+end
+
+
+Base.zero(x::VectDual) = VectDual(zero(x.value), zero(x.tangent))
+Base.zero(::Type{VectDual}) = VectDual(0.0, 0.0)
+Base.one(x::VectDual) = VectDual(ones(x.value), zero(x.tangent))
+Base.size(d::VectDual) = size(d.value)
+Base.length(d::VectDual) = length(d.value)
+Base.size(d::VectDual, dim::Int) = size(d.value, dim)
+Base.iterate(d::VectDual) = iterate(d.value)
+Base.iterate(d::VectDual, state) = iterate(d.value, state)
+Base.repeat(d::VectDual, counts...) =
+    VectDual(repeat(d.value, counts...), repeat(d.tangent, counts...))
+
+Base.adjoint(d::VectDual) =
+    VectDual(adjoint(d.value), adjoint(d.tangent))
+
+Base.transpose(d::VectDual) =
+    VectDual(transpose(d.value), transpose(d.tangent))
+# ============================================================================
+# OPÉRATIONS ARITHMÉTIQUES POUR VectDual
+# ============================================================================
+
+# Addition
+Base.:+(x::VectDual, y::VectDual) = VectDual(x.value .+ y.value, x.tangent .+ y.tangent)
+Base.:+(x::VectDual, y::Union{AbstractArray,Number}) = VectDual(x.value .+ y, x.tangent)
+Base.:+(x::Union{AbstractArray,Number}, y::VectDual) = VectDual(x .+ y.value, y.tangent)
+
+Base.broadcasted(::typeof(+), x::VectDual, y::VectDual) = VectDual(x.value .+ y.value, x.tangent .+ y.tangent)
+Base.broadcasted(::typeof(+), x::VectDual, y::Union{AbstractArray,Number}) = VectDual(x.value .+ y, x.tangent)
+Base.broadcasted(::typeof(+), x::Union{AbstractArray,Number}, y::VectDual) = VectDual(x .+ y.value, y.tangent)
+
+# Soustraction
+Base.:-(x::VectDual, y::VectDual) = VectDual(x.value .- y.value, x.tangent .- y.tangent)
+Base.:-(x::VectDual, y::Union{AbstractArray,Number}) = VectDual(x.value .- y, x.tangent)
+Base.:-(x::Union{AbstractArray,Number}, y::VectDual) = VectDual(x .- y.value, .-y.tangent)
+Base.:-(x::VectDual) = VectDual(-x.value, -x.tangent)
+
+Base.broadcasted(::typeof(-), x::VectDual, y::VectDual) = VectDual(x.value .- y.value, x.tangent .- y.tangent)
+Base.broadcasted(::typeof(-), x::VectDual, y::Union{AbstractArray,Number}) = VectDual(x.value .- y, x.tangent)
+Base.broadcasted(::typeof(-), x::Union{AbstractArray,Number}, y::VectDual) = VectDual(x .- y.value, .-y.tangent)
+
+# Multiplication matricielle
+Base.:*(A::AbstractMatrix, x::VectDual) = VectDual(A * x.value, A * x.tangent)
+Base.:*(x::VectDual, A::AbstractMatrix) = VectDual(x.value * A, x.tangent * A)
+Base.:*(x::VectDual, y::VectDual) = VectDual(x.value * y.value, x.tangent * y.value + x.value * y.tangent)
+
+# Multiplication scalaire
+Base.:*(α::Number, x::VectDual) = VectDual(α * x.value, α * x.tangent)
+Base.:*(x::VectDual, α::Number) = VectDual(x.value * α, x.tangent * α)
+
+# Multiplication élément par élément
+Base.broadcasted(::typeof(*), x::VectDual, y::VectDual) = VectDual(x.value .* y.value, x.tangent .* y.value .+ x.value .* y.tangent)
+Base.broadcasted(::typeof(*), x::VectDual, y::Union{AbstractArray,Number}) = VectDual(x.value .* y, x.tangent .* y)
+Base.broadcasted(::typeof(*), x::Union{AbstractArray,Number}, y::VectDual) = VectDual(x .* y.value, x .* y.tangent)
+
+# Division
+Base.:/(x::VectDual, α::Number) = VectDual(x.value / α, x.tangent / α)
+
+Base.broadcasted(::typeof(/), x::VectDual, y::VectDual) = VectDual(
+    x.value ./ y.value,
+    (x.tangent .* y.value .- x.value .* y.tangent) ./ (y.value .^ 2)
+)
+Base.broadcasted(::typeof(/), x::VectDual, y::Union{AbstractArray,Number}) = VectDual(x.value ./ y, x.tangent ./ y)
+Base.broadcasted(::typeof(/), x::Union{AbstractArray,Number}, y::VectDual) = VectDual(
+    x ./ y.value,
+    .-x .* y.tangent ./ (y.value .^ 2)
+)
+
+# Puissance
+Base.broadcasted(::typeof(^), x::VectDual, n::Number) = VectDual(
+    x.value .^ n,
+    n .* (x.value .^ (n - 1)) .* x.tangent
+)
+
+Base.broadcasted(::typeof(Base.literal_pow), ::typeof(^), x::VectDual, ::Val{n}) where {n} = 
+    Base.broadcasted(^, x, n)
+
+# ============================================================================
+# FONCTIONS SPÉCIALES
+# ============================================================================
+
+# Tanh
+Base.broadcasted(::typeof(tanh), x::VectDual) = VectDual(
+    tanh.(x.value),
+    (1 .- tanh.(x.value).^2) .* x.tangent
+)
+
+# ReLU
+Base.broadcasted(::typeof(relu), x::VectDual) = VectDual(
+    max.(x.value, 0.0),
+    @. ifelse(x.value >= 0.0, 1.0, 0.0) * x.tangent
+)
+
+# Exponential
+Base.broadcasted(::typeof(exp), x::VectDual) = VectDual(
+    exp.(x.value),
+    exp.(x.value) .* x.tangent
+)
+
+# Logarithm
+Base.broadcasted(::typeof(log), x::VectDual) = VectDual(
+    log.(x.value),
+    x.tangent ./ x.value
+)
+
+# Sum
+Base.sum(x::VectDual) = VectDual(sum(x.value), sum(x.tangent))
+
+Base.sum(x::VectDual; dims=2) = VectDual(
+    Base.sum(x.value, dims=dims),
+    Base.sum(x.tangent, dims=dims)
+)
+
+# Maximum
+Base.maximum(x::VectDual; dims=2) = begin
+    mx = Base.maximum(x.value, dims=dims)
+    mask = x.value .== mx
+    VectDual(mx, Base.sum(mask .* x.tangent, dims=dims))
+end
+
+# Softmax
+function softmax(x::VectDual)
+    mx = Base.maximum(x.value, dims=2)
+    exps = exp.(x.value .- mx)
+    sums = Base.sum(exps, dims=2)
+    s = exps ./ sums
+    # Jacobien: s .* (tangent - sum(s .* tangent))
+    tangent_out = s .* (x.tangent .- sum(s .* x.tangent, dims=2))
+    VectDual(s, tangent_out)
+end
+
+# ============================================================================
+# SUPPORT POUR FLATTEN
+# ============================================================================
+
+function Base.:*(A::Flatten{<:VectDual}, X::AbstractMatrix)
+    Flatten(map(a -> a * X, A.components))
+end
+
+function Base.:*(X::AbstractMatrix, A::Flatten{<:VectDual})
+    Flatten(map(a -> X * a, A.components))
+end
+
+# ============================================================================
+# PUSHFORWARD CORRIGÉ (FORWARD MODE)
+# ============================================================================
+
+# Fonction auxiliaire : extraire les valeurs d'un Flatten de VectDual
+function extract_values(x::Flatten)
+    if eltype(x.components) <: VectDual
+        return Flatten([comp.value for comp in x.components])
+    else
+        return x
+    end
+end
+
+# Fonction auxiliaire : extraire les tangentes d'un Flatten de VectDual
+function extract_tangents(x::Flatten)
+    return Flatten([comp.tangent for comp in x.components])
+end
+
+
+# ============================================================================
+# JACOBIAN ET HESSIAN
+# ============================================================================
+
+# Fonction auxiliaire pour aplatir un Flatten en vecteur
+function flatten_to_vector(x::Flatten)
+    return reduce(vcat, [vec(comp) for comp in x.components])
+end
+
+
+# Pour le type VectDual
+Base.ndims(::Type{VectDual}) = 0  # Le type lui-même n'a pas de dimensions
+Base.ndims(x::VectDual) = ndims(x.value)  # Délègue à la valeur contenue
+
+# Fonction auxiliaire : créer un vecteur de base e_i pour un Flatten
+function create_basis_vector(x::Flatten, global_idx::Int)
+    result = zero(x)
+    offset = 0
+    for i in eachindex(x.components)
+        comp_len = length(x.components[i])
+        if global_idx <= offset + comp_len
+            local_idx = global_idx - offset
+            flat_comp = vec(result.components[i])
+            flat_comp[local_idx] = 1.0
+            result.components[i] .= reshape(flat_comp, size(x.components[i]))
+            return result
+        end
+        offset += comp_len
+    end
+    error("Index out of bounds: $global_idx > $(offset)")
+end
+
+
+
+# Pushforward avec VectDual (forward mode pur)
 function pushforward(f, x::Flatten, tx::Flatten)
-    # Création d’un Flatten de VectNodes vectoriels
-    dW = Flatten([
-        VectNode(x.components[i], tx.components[i])
+    # Créer un Flatten de VectDual (forward mode)
+    dual_input = Flatten([
+        VectDual(x.components[i], tx.components[i])
         for i in eachindex(x.components)
     ])
-    
-    y = f(dW)  # Appel du f qui fait la backprop reverse
-    return Flatten([
-        x_i.derivative for x_i in y.components
-    ])
+    #println("dual input:", dual_input)
+    # Évaluer f avec les dual numbers (propagation forward)
+    y = f(dual_input)
+	# println("y:", y)
+	return Flatten([c.tangent for c in y.components])
 end
 
-# 2) Colonne i de la Jacobienne
-function jacobian(f, x::Flatten, i::Integer)
-    return pushforward(f, x, onehot(x, i))  # onehot marche car Flatten a getindex/setindex!
+# Jacobian : colonne i (i est un index GLOBAL dans le vecteur aplati)
+function jacobian_column(f, x::Flatten, i::Integer)
+    basis = create_basis_vector(x, i)
+    return pushforward(f, x, basis)
 end
 
-# 3) Jacobienne complète
+# Jacobian complète
 function jacobian(f, x::Flatten)
-    return reduce(hcat, map(i -> jacobian(f, x, i), eachindex(x.components)))
+    n = length(x)  # Nombre total d'éléments dans le vecteur aplati
+    cols = [jacobian_column(f, x, i) for i in 1:n]
+    # Aplatir chaque colonne et concaténer
+    return reduce(hcat, [flatten_to_vector(col) for col in cols])
 end
 
-# 4) Hessienne = Jacobienne du gradient (forward-over-reverse)
-hessian(f, x::Flatten) = jacobian(z -> gradient2(f, z), x)
-
+# Hessian = Jacobian du gradient (forward-on-reverse)
+function hessian(f, x)
+    # La fonction passée à jacobian doit gérer VectDual
+	# println("hessian: ", jacobian(z -> gradient(f, z), x))
+    return jacobian(z -> gradient(f, z), x)
+end
 
 end
