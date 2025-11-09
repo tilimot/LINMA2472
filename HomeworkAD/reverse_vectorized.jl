@@ -446,12 +446,24 @@ function _backward!(f::VectNode)
 		parent.derivative = parent.derivative .+ backprop_fn(f.derivative)
 	end
 end
+Base.one(x::AbstractArray{<:Number}) = ones(size(x))
 
 function backward!(f::VectNode)
 	visited = Set{VectNode}()
 	topo = VectNode[]
 	topo_sort!(visited, topo, f)
-	f.derivative = (f.value isa VectDual) ? one(f.value) : one.(f.value)	# Initialization of the output gradient to 1
+	
+    for node in topo
+        node.derivative = zero(node.derivative)
+    end
+	if f.value isa VectDual
+        f.derivative = VectDual(1.0, f.value.tangent)         # VectDual(1, 0)
+    elseif isa(f.value, Number)
+        f.derivative = one(f.value)              # 1.0
+    else
+        f.derivative = ones(size(f.value))       # vecteur / matrice de 1
+    end
+
 	for node in reverse(topo)
 		_backward!(node)
 	end
@@ -490,12 +502,19 @@ end
 struct VectDual
     value::Union{AbstractArray, Number}
     tangent::Union{AbstractArray, Number}
+	
+    function VectDual(v, t)
+        if v isa VectDual || t isa VectDual
+            error("Nested VectDual détecté : value=$v, tangent=$t")
+        end
+        return new(v, t)
+    end
 end
 
 
 Base.zero(x::VectDual) = VectDual(zero(x.value), zero(x.tangent))
 Base.zero(::Type{VectDual}) = VectDual(0.0, 0.0)
-Base.one(x::VectDual) = VectDual(ones(x.value), zero(x.tangent))
+Base.one(x::VectDual) = VectDual(one(x.value), zero(x.tangent))
 Base.size(d::VectDual) = size(d.value)
 Base.length(d::VectDual) = length(d.value)
 Base.size(d::VectDual, dim::Int) = size(d.value, dim)
@@ -718,7 +737,7 @@ end
 # Hessian = Jacobian du gradient (forward-on-reverse)
 function hessian(f, x)
     # La fonction passée à jacobian doit gérer VectDual
-	# println("hessian: ", jacobian(z -> gradient(f, z), x))
+	println("hessian: ", jacobian(z -> gradient(f, z), x))
     return jacobian(z -> gradient(f, z), x)
 end
 
