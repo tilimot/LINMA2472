@@ -25,8 +25,6 @@ function check_case(X, y, w, loss_function, activation, Reference_diff, Given_di
     ∇r = Given_diff(L, deepcopy(w))
     ∇f = flatten_gradient(∇f)
     ∇r = flatten_gradient(∇r)
-    println("Reference Gradient Size: ", size(∇f))
-    println("Computed Gradient Size: ", size(∇r))   
     if ! test
         @test_skip "Not doing this test" 
     else

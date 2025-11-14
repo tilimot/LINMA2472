@@ -23,11 +23,13 @@ VectNode(value, derivative) = VectNode(value, derivative, Tuple{VectNode, Functi
 VectNode(x::VectNode) = x
 # For vectors / matrix
 VectNode(x::AbstractArray) = VectNode(x, zeros(size(x)), Vector{Tuple{VectNode,Function}}())
-# Remplacer la version actuelle qui met zero(value)
-
-#####################
-# Opérateurs VectNode
-#####################
+function VectNode(value)
+    return VectNode(
+        value,
+        zero(value),                           # même type que value (Matrix ou VectDual)
+        Tuple{VectNode, Function}[]            # tableau vide de parents
+    )
+end
 
 # tanh.(X)
 function Base.broadcasted(::typeof(tanh), x::VectNode)
@@ -51,10 +53,6 @@ function Base.broadcasted(::typeof(relu), x::VectNode)
 end
 
 relu_activation(x) = relu.(x)
-
-###########
-# x .* y  #
-###########
 
 # X .* Y (VectNode, VectNode)
 function Base.broadcasted(::typeof(*), x::VectNode, y::VectNode)
@@ -84,29 +82,12 @@ function Base.broadcasted(::typeof(*), x::Union{AbstractArray,Number}, y::VectNo
     )
 end
 
-##########################
-# Produits matriciels  * #
-##########################
-
 # A * x, A matrice, x VectNode
 function Base.:*(A::AbstractMatrix, x::VectNode)
-    result = A * x.value
-    backprop = function(Δ)
-        contrib = A' * Δ
-        # Debug to understand tangent propagation
-        debug_matmul = false
-        if debug_matmul && Δ isa VectDual && result isa VectDual
-            println("  Backprop A*x: Δ is VectDual")
-            println("    Δ.tangent max = ", maximum(abs.(Δ.tangent)))
-            println("    contrib.tangent max = ", maximum(abs.(contrib.tangent)))
-            println("    result.tangent max = ", maximum(abs.(result.tangent)))
-        end
-        return contrib
-    end
     VectNode(
-        result,
-        zero(result),
-        [(x, backprop)]
+        A * x.value,
+        zero(A * x.value),
+        [(x, Δ -> A' * Δ)]
     )
 end
 
@@ -121,18 +102,9 @@ end
 
 # x * y, x et y VectNode (produit matrice)
 function Base.:*(x::VectNode, y::VectNode)
-    result_value = x.value * y.value
-    # Debug
-    debug_mult = false
-    if debug_mult && x.value isa VectDual && y.value isa VectDual
-        println("VectNode * VectNode where both values are VectDual")
-        println("  x.value has tangent[1,1] = ", x.value.tangent[1,1])
-        println("  y.value has tangent[1] = ", y.value.tangent[1])
-        println("  result tangent[1] = ", result_value.tangent[1])
-    end
     VectNode(
-        result_value,
-        zero(result_value),
+        x.value * y.value,
+        zero(x.value * y.value),
         [(x, Δ -> Δ * y.value'),
          (y, Δ -> x.value' * Δ)]
     )
@@ -176,9 +148,6 @@ function Base.:*(A::Flatten, B::AbstractMatrix)
     Flatten(map(a -> a * B, A.components))
 end
 
-############
-# x ./ y   #
-############
 
 # X ./ Y (VectNode, VectNode)
 function Base.broadcasted(::typeof(/), x::VectNode, y::VectNode)
@@ -208,9 +177,6 @@ function Base.broadcasted(::typeof(/), x::Union{AbstractArray,Number}, y::VectNo
     )
 end
 
-################
-# x .^ y       #
-################
 
 # x .^ 2
 function Base.broadcasted(::typeof(Base.literal_pow), ::typeof(^), x::VectNode, ::Val{y}) where {y}
@@ -244,10 +210,6 @@ function Base.broadcasted(::typeof(^), x::Union{AbstractArray,Number}, y::VectNo
         [(y, Δ -> Δ .* (log.(x) .* (x .^ y.value)))]
     )
 end
-
-###########
-# + et -  #
-###########
 
 # X .+ Y
 function Base.broadcasted(::typeof(+), x::VectNode, y::VectNode)
@@ -332,10 +294,6 @@ function Base.:-(x::VectNode)
     VectNode(-x.value, zero(x.value), [(x, Δ -> -Δ)])
 end
 
-#############
-# identity  #
-#############
-
 function Base.broadcasted(::typeof(identity), x::VectNode)
     VectNode(
         identity.(x.value),
@@ -344,13 +302,8 @@ function Base.broadcasted(::typeof(identity), x::VectNode)
     )
 end
 
-#########################
-# sum, maximum, exp, log
-#########################
-
 import Base: sum
 
-# sum(v) : ici on doit dupliquer Δ => cas spécial VectDual nécessaire
 function Base.sum(v::VectNode)
     s = sum(v.value)
     return VectNode(s, zero(s), [(v, Δ ->
@@ -398,7 +351,7 @@ function Base.sum(x::VectNode; dims=2)
             repeat(Δ, 1, size(x.value, 2)) )])
 end
 
-# elementwise division pour VectNode ./ VectNode (version finale)
+# elementwise division pour VectNode ./ VectNode 
 function Base.broadcasted(::typeof(/), x::VectNode, y::VectNode)
     VectNode(x.value ./ y.value, zero(x.value), [
         (x, Δ -> Δ ./ y.value),
@@ -406,10 +359,11 @@ function Base.broadcasted(::typeof(/), x::VectNode, y::VectNode)
     ])
 end
 
+# Produit scalaire classique (pour certains tests)
+function Base.:*(x::Vector{Float64}, y::Vector{Float64})
+    return dot(x, y)
+end
 
-###########
-# softmax #
-###########
 
 function softmax(x::VectNode)
     mx   = Base.maximum(x.value, dims=2)
@@ -424,7 +378,8 @@ function softmax(x::VectNode)
 end
 
 
-Base.ndims(x::VectNode) = ndims(x.value)  # Délègue à la valeur contenue
+Base.ndims(::Type{VectNode}) = 0  
+Base.ndims(x::VectNode) = ndims(x.value)  
 #=Base.iterate(n::VectNode) = Base.iterate(n.value)
 Base.iterate(n::VectNode, s) = Base.iterate(n.value, s)
 Base.getindex(n::VectNode, i...) = getindex(n.value, i...) =#
@@ -432,38 +387,93 @@ Base.eachindex(n::VectNode) = eachindex(n.value)
 Base.length(n::VectNode) = length(n.value)
 Base.size(n::VectNode) = size(n.value)
 
-# Pour la fonction ones avec une matrice
 Base.ones(x::Vector{Float64}) = fill(1.0, size(x))
 Base.ones(x::Matrix{Float64}) = fill(1.0, size(x))
 Base.ones(x::Matrix{Vector}) = fill(1.0, size(x))
-# Pour ones avec un VectNode
+
 Base.ones(x::VectNode) = VectNode(ones(x.value), zero(x.value), Tuple{VectNode, Function}[])
 
-# Pour ones avec une taille donnée (si nécessaire)
 Base.ones(dims::Tuple{Int,Int}) = fill(1.0, dims)
 
 
+function topo_sort!(visited, topo, f::VectNode)
+	if !(f in visited)
+		push!(visited, f)
+		for (parent, _) in f.parents
+			topo_sort!(visited, topo, parent)
+		end
+		push!(topo, f)
+	end
+end
 
-######################## Second order ###################
-# ============================================================================
-# DUAL VECTORISÉ POUR FORWARD MODE
-# ============================================================================
+function _backward!(f::VectNode)
+	for (parent, backprop_fn) in f.parents
+		parent.derivative = parent.derivative .+ backprop_fn(f.derivative)
+	end
+end
+Base.one(x::AbstractArray{<:Number}) = ones(size(x))
 
-# Dual vectorisé : contient des valeurs et dérivées qui sont des arrays/matrices
-# IMPORTANT: Permet la récursivité pour supporter forward-over-reverse!
+function backward!(f::VectNode)
+	visited = Set{VectNode}()
+	topo = VectNode[]
+	topo_sort!(visited, topo, f)
+	
+    for node in topo
+        node.derivative = zero(node.derivative)
+    end
+	if f.value isa VectDual
+        f.derivative = VectDual(1.0, f.value.tangent)         # VectDual(1, 0)
+    elseif isa(f.value, Number)
+        f.derivative = one(f.value)              # 1.0
+    else
+        f.derivative = ones(size(f.value))       # vecteur / matrice de 1
+    end
+
+	for node in reverse(topo)
+		_backward!(node)
+	end
+end
+
+function gradient!(f, g::Flatten, x::Flatten)
+    # Convertit chaque composant en VectNode
+    x_nodes = Flatten(VectNode.(x.components))
+    expr = f(x_nodes)
+    backward!(expr)
+    for i in eachindex(x.components)
+        g.components[i] = x_nodes.components[i].derivative
+    end
+    return g
+end
+
+function gradient(f, x::Flatten)
+    g = Flatten([zero(c) for c in x.components])
+    return gradient!(f, g, x)
+end
+
+
+function onehot(x::Flatten, i::Integer)
+    tx = zero(x)                     # même structure que x, rempli de zéros
+    tx.components[i] .= ones(tx.components[i])
+    return tx
+end
+
+
+# Second order
 struct VectDual
-    value::Union{AbstractArray, Number, VectDual}
-    tangent::Union{AbstractArray, Number, VectDual}
+    value::Union{AbstractArray, Number}
+    tangent::Union{AbstractArray, Number}
 	
     function VectDual(v, t)
-        # Ne plus interdire les VectDual imbriqués - c'est nécessaire pour le Hessien!
+        if v isa VectDual || t isa VectDual
+            error("Nested VectDual détecté : value=$v, tangent=$t")
+        end
         return new(v, t)
     end
 end
 
-VectNode(x::VectDual) = VectNode(x, zero(x), Vector{Tuple{VectNode,Function}}())
 
 Base.zero(x::VectDual) = VectDual(zero(x.value), zero(x.tangent))
+Base.zero(::Type{VectDual}) = VectDual(0.0, 0.0)
 Base.one(x::VectDual) = VectDual(one(x.value), zero(x.tangent))
 Base.size(d::VectDual) = size(d.value)
 Base.length(d::VectDual) = length(d.value)
@@ -478,9 +488,6 @@ Base.adjoint(d::VectDual) =
 
 Base.transpose(d::VectDual) =
     VectDual(transpose(d.value), transpose(d.tangent))
-# ============================================================================
-# OPÉRATIONS ARITHMÉTIQUES POUR VectDual
-# ============================================================================
 
 # Addition
 Base.:+(x::VectDual, y::VectDual) = VectDual(x.value .+ y.value, x.tangent .+ y.tangent)
@@ -537,10 +544,6 @@ Base.broadcasted(::typeof(^), x::VectDual, n::Number) = VectDual(
 Base.broadcasted(::typeof(Base.literal_pow), ::typeof(^), x::VectDual, ::Val{n}) where {n} = 
     Base.broadcasted(^, x, n)
 
-# ============================================================================
-# FONCTIONS SPÉCIALES
-# ============================================================================
-
 # Tanh
 Base.broadcasted(::typeof(tanh), x::VectDual) = VectDual(
     tanh.(x.value),
@@ -591,9 +594,6 @@ function softmax(x::VectDual)
     VectDual(s, tangent_out)
 end
 
-# ============================================================================
-# SUPPORT POUR FLATTEN
-# ============================================================================
 
 function Base.:*(A::Flatten{<:VectDual}, X::AbstractMatrix)
     Flatten(map(a -> a * X, A.components))
@@ -603,39 +603,14 @@ function Base.:*(X::AbstractMatrix, A::Flatten{<:VectDual})
     Flatten(map(a -> X * a, A.components))
 end
 
-# ============================================================================
-# PUSHFORWARD CORRIGÉ (FORWARD MODE)
-# ============================================================================
-
-# Fonction auxiliaire : extraire les valeurs d'un Flatten de VectDual
-function extract_values(x::Flatten)
-    if eltype(x.components) <: VectDual
-        return Flatten([comp.value for comp in x.components])
-    else
-        return x
-    end
-end
-
-# Fonction auxiliaire : extraire les tangentes d'un Flatten de VectDual
-function extract_tangents(x::Flatten)
-    return Flatten([comp.tangent for comp in x.components])
-end
-
-
-# ============================================================================
-# JACOBIAN ET HESSIAN
-# ============================================================================
-
-# Fonction auxiliaire pour aplatir un Flatten en vecteur
 function flatten_to_vector(x::Flatten)
     return reduce(vcat, [vec(comp) for comp in x.components])
 end
 
 
-# Pour le type VectDual
-Base.ndims(x::VectDual) = ndims(x.value)  # Délègue à la valeur contenue
+Base.ndims(::Type{VectDual}) = 0  
+Base.ndims(x::VectDual) = ndims(x.value)  
 
-# Fonction auxiliaire : créer un vecteur de base e_i pour un Flatten
 function create_basis_vector(x::Flatten, global_idx::Int)
     result = zero(x)
     offset = 0
@@ -654,145 +629,31 @@ function create_basis_vector(x::Flatten, global_idx::Int)
 end
 
 
-
-function topo_sort!(visited, topo, f::VectNode)
-	if !(f in visited)
-		push!(visited, f)
-		for (parent, _) in f.parents
-			topo_sort!(visited, topo, parent)
-		end
-		push!(topo, f)
-	end
-end
-
-function _backward!(f::VectNode)
-	for (parent, backprop_fn) in f.parents
-		contribution = backprop_fn(f.derivative)
-		parent.derivative = parent.derivative .+ contribution
-	end
-end
-Base.one(x::AbstractArray{<:Number}) = ones(size(x))
-
-function backward!(f::VectNode)
-	visited = Set{VectNode}()
-	topo = VectNode[]
-	topo_sort!(visited, topo, f)
-	# Initialize derivative based on the type/shape of f.value
-	if f.value isa Number || f.value isa VectDual
-		f.derivative = one(f.value)
-	else
-		f.derivative = one.(f.value)
-	end
-	for node in reverse(topo)
-		_backward!(node)
-	end
-end
-
-function gradient!(f, g::Flatten, x::Flatten)
-    # Convertit chaque composant en VectNode
-    x_nodes = Flatten(VectNode.(x.components))
-    expr = f(x_nodes)
-    
-    # Debug: check if expr.value is VectDual and if it has tangent
-    debug_grad = false
-    if debug_grad && expr.value isa VectDual
-        println("Before backward!: expr.value = VectDual(value=$(expr.value.value), tangent=$(expr.value.tangent))")
-    end
-    
-    backward!(expr)
-    for i in eachindex(x.components)
-        g.components[i] = x_nodes.components[i].derivative
-    end
-    return g
-end
-
-function gradient(f, x::Flatten)
-    g = Flatten([zero(c) for c in x.components])
-    return gradient!(f, g, x)
-end
-
-# Gradient for Flatten{VectDual} (forward-on-reverse mode for Hessian)  
-# We need a specialized version that uses gradient! which can handle VectDual atomically
-function gradient(f, x::Flatten{<:VectDual})
-    # Simply delegate to gradient! which will treat VectDual as atomic values
-    # The VectDual arithmetic will automatically propagate through operations
-    g = Flatten([zero(c) for c in x.components])
-    result = gradient!(f, g, x)
-    
-    # Debug: print what we got
-    debug_hvp = false
-    if debug_hvp && length(x.components) > 0
-        println("gradient(Flatten{VectDual}) result:")
-        println("  result[1] has tangent with norm: ", 
-                result.components[1] isa VectDual ? norm(result.components[1].tangent) : "N/A")
-    end
-    
-    return result
-end
-
-# Pushforward avec VectDual (forward mode pur)
 function pushforward(f, x::Flatten, tx::Flatten)
     # Créer un Flatten de VectDual (forward mode)
     dual_input = Flatten([
         VectDual(x.components[i], tx.components[i])
         for i in eachindex(x.components)
     ])
-    #println("dual input:", dual_input)
-    # Évaluer f avec les dual numbers (propagation forward)
+
+    # forward prop
     y = f(dual_input)
-	# println("y:", y)
 	return Flatten([c.tangent for c in y.components])
 end
 
-# Jacobian : colonne i (i est un index GLOBAL dans le vecteur aplati)
+# i est un index global 
 function jacobian_column(f, x::Flatten, i::Integer)
     basis = create_basis_vector(x, i)
     return pushforward(f, x, basis)
 end
-
-# Jacobian complète
 function jacobian(f, x::Flatten)
-    n = length(x)  # Nombre total d'éléments dans le vecteur aplati
+    n = length(x) 
     cols = [jacobian_column(f, x, i) for i in 1:n]
-    # Aplatir chaque colonne et concaténer
     return reduce(hcat, [flatten_to_vector(col) for col in cols])
 end
 
-# Hessian-vector product: calcule H*v où H est le Hessien
-# Utilise finite differences car forward-over-reverse nécessiterait un backward pass différentiable
-function hvp(f, x::Flatten, v::Flatten)
-    # Pour la précision requise (rtol=1e-8), on utilise eps suffisamment petit
-    # mais pas trop pour éviter l'erreur de cancellation
-    eps = 1e-5
-    
-    # Créer x + eps*v et x - eps*v
-    x_plus = Flatten([x.components[i] .+ eps .* v.components[i] for i in eachindex(x.components)])
-    x_minus = Flatten([x.components[i] .- eps .* v.components[i] for i in eachindex(x.components)])
-    
-    # Calculer gradient(f, x + eps*v) - gradient(f, x - eps*v)
-    g_plus = gradient(f, x_plus)
-    g_minus = gradient(f, x_minus)
-    
-    # Approximation par différences finies centrées: H*v ≈ (∇f(x+εv) - ∇f(x-εv)) / (2ε)
-    result = Flatten([
-        (g_plus.components[i] .- g_minus.components[i]) ./ (2 * eps)
-        for i in eachindex(x.components)
-    ])
-    
-    return result
-end
-
-# Hessian complet: calcule toutes les colonnes du Hessien
 function hessian(f, x)
-    n = length(x)
-    # Calculer chaque colonne du Hessien via hvp avec vecteurs de base
-    H_cols = []
-    for i in 1:n
-        v = create_basis_vector(x, i)
-        col = hvp(f, x, v)
-        push!(H_cols, flatten_to_vector(col))
-    end
-    return reduce(hcat, H_cols)
+    return jacobian(z -> gradient(f, z), x)
 end
 
 end
