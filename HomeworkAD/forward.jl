@@ -510,8 +510,13 @@ function onehot(v, i)
 end
 
 function gradient(f, x, i::Integer)
+	println("")
+	println("gradient input: ", x)
     dx = map(Dual, x, onehot(x, i))
-    return f(dx).derivative
+	println("gradient after Dual application: ", dx)
+	result = f(dx).derivative
+	println("gradient results ",result )
+    return result
 end
 
 function gradient!(f, g, x)
@@ -524,12 +529,26 @@ gradient(f, x) = gradient!(f, zero(x), x)
 
 # Jacobian-vector product `J(x) * tx`
 function pushforward(f, x, tx)
+	println("jacobian vector direction: ", tx)
+
     dW = map(Dual, x, tx)
+	println("dW representation: ", dW)
+	# println("dW.value: ", dW.value)
+	# println("dW.derivative: ", dW.derivative)
+	# ccl du test --> dW est une array de Dual dW = [ Dual(value1, derivative1)  Dual(vlaue2, derivative2)]
     return map(y -> y.derivative, f(dW))
 end
 
 function jacobian(f, x, i::Integer)
-    return pushforward(f, x, onehot(x, i))
+
+	println("jacobian input: ", x)
+    
+	result= pushforward(f, x, onehot(x, i))
+	println("Result of Jacobian: ", result)
+	println("\n")
+	println("\n")
+
+	return result
 end
 
 # We don't know in advance the dimension of the output of `F`

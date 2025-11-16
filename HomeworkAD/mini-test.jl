@@ -1,4 +1,7 @@
 
+include( "forward.jl")
+
+
 # Forward mode: pushforward
 function pushforward_simple(f, x, tx)
     dW = [Dual(x[i], tx[i]) for i in eachindex(x)]
@@ -29,6 +32,10 @@ end
 f(x) = sum(x.^2)
 x = [2.0, 3.0]
 
+# forward-on-forward
+Forward.hessian(f, x)
+
+
 # Méthode: Forward-on-Reverse
-grad_f = z -> gradient_simple(f, z)
-H = jacobian_forward(grad_f, x)
+# grad_f = z -> gradient_simple(f, z)
+# H = jacobian_forward(grad_f, x)
