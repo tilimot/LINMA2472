@@ -536,7 +536,9 @@ function pushforward(f, x, tx)
 	# println("dW.value: ", dW.value)
 	# println("dW.derivative: ", dW.derivative)
 	# ccl du test --> dW est une array de Dual dW = [ Dual(value1, derivative1)  Dual(vlaue2, derivative2)]
-    return map(y -> y.derivative, f(dW))
+    result=map(y -> y.derivative, f(dW))
+	println("result of pyshforward: ", result) 
+	return result
 end
 
 function jacobian(f, x, i::Integer)

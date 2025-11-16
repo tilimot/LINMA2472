@@ -415,9 +415,13 @@ end
 
 function gradient!(f, g::Flatten, x::Flatten)
 	# Converts each component to a VectNode
+	println("received x into reverse gradient: ", x)
 	x_nodes = Flatten(VectNode.(x.components))
 	# function calculation
+	println("x_nodes: ", x_nodes)
 	expr = f(x_nodes)
+
+	println("expre: ", expr)
 	# Backprop
 	backward!(expr)
 	for i in eachindex(x.components)
@@ -437,18 +441,73 @@ end
 
 
 ################## Second- order ################## 
-function make_gi(f, i)
-    x -> gradient(f, x)[i]
+
+function onehot(v, i)
+    z = zero(v)
+    z[i] = one(z[i])
+    return z
+end
+
+gradient2(f, x) = gradient2!(f, zero(x), x)
+
+function gradient2!(f, g::Flatten, x::Flatten)
+	# Converts each component to a VectNode
+	x_nodes = Flatten(VectNode.(x.components))
+	# function calculation
+	expr = f(x_nodes)
+	# Backprop
+	backward!(expr)
+	for i in eachindex(x.components)
+		g.components[i] .= x_nodes.components[i].derivative
+	end
+	return g
+end
+
+# Jacobian-vector product `J(x) * tx`
+function pushforward(f, x, tx)
+	println("jacobian vector direction: ", tx)
+
+    dW = map(Forward.Dual, x, tx)
+	println("dW representation: ", dW)
+	# println("dW.value: ", dW.value)
+	# println("dW.derivative: ", dW.derivative)
+	# ccl du test --> dW est une array de Dual dW = [ Dual(value1, derivative1)  Dual(vlaue2, derivative2)]
+
+	# println("dW[1]: ", dW[1])
+	# println(" dw[2]: ", dW[2])
+	# dW_reverse = [VectNode(dW[1], dW[2], [])]
+	# println("dW reverse:", dW_reverse)
+	# int_res = f(dW_reverse)
+	# println("f(dW): ", int_res)
+
+	flatten_dW= Flatten(dW)
+    result=map(y -> y.derivative, f(flatten_dW))
+	
+	println("result of puhforward: ", result) 
+	return result
+end
+
+
+function jacobian(f, x, i::Integer)
+
+	println("jacobian input: ", x)
+    
+	result= pushforward(f, x, onehot(x, i))
+	println("Result of Jacobian: ", result)
+	println("\n")
+	println("\n")
+
+	return result
+end
+
+# We don't know in advance the dimension of the output of `F`
+# so we cannot easily redirect to a `jacobian!`
+function jacobian(f, x)
+    return reduce(hcat, map(i -> jacobian(f, x, i), eachindex(x)))
 end
 
 function hessian(f, x)
-    n = length(x)
-    H = zeros(n, n)
-    for i in 1:n
-        gi = make_gi(f, i)
-        H[i, :] = Forward.gradient(gi, x)
-    end
-    return H
+    return jacobian(z -> gradient(f, z), x)
 end
 
 
