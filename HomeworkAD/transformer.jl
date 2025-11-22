@@ -34,20 +34,67 @@ train_data = data[1:n]
 val_data   = data[n+1:end]
 
 
-### Création des batch
+### Sample random chunks and sending a chunk at a time to the transformer
+### The maximym length = block_size
+
+block_size = 8
+train_data[1:block_size+1]
+
+# x = train_data[:block_size]
+x = train_data[1:block_size]
+
+
+y = train_data[2:block_size+1]
+
+for t in 1:block_size
+    context = x[1:t]          # x[:t+1] en Python
+    target  = y[t]            # y[t]
+    println("when input is $(context) the target: $(target)")
+end
+
+### Création des batch to process multiple chunks at the same time
 
 using Random
 
 Random.seed!(1337)
 
-block_size = 8  # consider increasing to 32 or 64 later
+batch_size = 4      # combien de séquences en parallèle
+block_size = 8      # longueur du contexte
 
-function get_batch(split; batch_size=32)
+function get_batch(split)
     data = split == "train" ? train_data : val_data
+
+    # tirage aléatoire des positions de départ
     ix = rand(1:length(data)-block_size, batch_size)
+
+    # créer la matrice x (batch_size × block_size)
     x = [data[i + t] for i in ix, t in 0:block_size-1]
+
+    # créer la matrice y (batch_size × block_size)
     y = [data[i + t + 1] for i in ix, t in 0:block_size-1]
+
     return x, y
+end
+
+# tester
+xb, yb = get_batch("train")
+
+println("inputs:")
+println(xb, size(xb))
+
+println("targets:")
+println(size(yb))
+println(yb)
+
+println("-----")
+
+# reproduction de la boucle Python
+for b in 1:batch_size        # dimension batch
+    for t in 1:block_size    # dimension temps
+        context = xb[b, 1:t]
+        target  = yb[b, t]
+        println("when input is $(context) the target: $(target)")
+    end
 end
 
 using Flux
@@ -56,53 +103,102 @@ using Random
 using StatsBase
 Random.seed!(1337)
 
+# exemple d'appel, comme en PyTorch
 vocab_size = length(chars)
 
+
+# xb et yb : matrice d'Int (B,T) avec valeurs dans 1:vocab_size
+# B = batch_size
+# T = longueur de chaque séquence
+println("inputs:")
+println("xb", xb)
+println("targets:")
+println("yb", yb)
+println("size of xb: ", size(xb))
+println("size of yb: ", size(yb))
+println("-----")
+
+
+# C'est pas bien car total random...
+# On regarde que le dernier charac...
+# The history is not used
+
 function bigram_activation(Wflat::Flatten, Xb)
-    W = Wflat.components[1]
-    idx = vec(Xb)
+    W = Wflat.components[1]          # C×C (Float32 ou VectNode)
+
+
+    idx = vec(Xb)                    # longueur N = B*T
     N = length(idx)
+
+    # one-hot (Float32 constants)
     OH = zeros(Float32, C, N)
     @inbounds for (j, i) in enumerate(idx)
         OH[i, j] = 1f0
     end
-    return W * OH
+
+    # logits = W * onehot
+    # si W est Matrix{VectNode}, le produit garde le graphe
+    return W * OH                    # C×N = C×(B*T)
 end
 
 
 ##############################
-# BIGRAM MODEL FOR GENERATION
+# Use trained W for generation
 ##############################
 
+
+# Petit modèle manuel qui utilise W
 struct ManualBigram
-    W::Matrix{Float32}
+    W::Matrix{Float32}  # C×C
 end
 
 function (m::ManualBigram)(idx)
+    # idx : (B,T) Int
     idx_vec = vec(idx)
-    logits2d = m.W[:, idx_vec]
+    logits2d = m.W[:, idx_vec]          # C×(B*T)
     B, T = size(idx)
-    return reshape(logits2d, C, B, T)
+    return reshape(logits2d, C, B, T)   # C×B×T
 end
 
 function generate(m::ManualBigram, idx, max_new_tokens)
     for _ in 1:max_new_tokens
-        logits = m(idx)
-        last_logits = logits[:, :, end]
-        last_logits = permutedims(last_logits, (2,1))
-        probs = softmax(last_logits)
+        logits = m(idx)                 # C×B×T
+        last_logits = logits[:, :, end] # C×B
+        last_logits = permutedims(last_logits, (2,1))  # B×C
+
+        probs = softmax(last_logits)    # B×C
         Bsize, Csize = size(probs)
-        idx_next = similar(idx[:,1:1])
+        idx_next = similar(idx[:,1:1])  # B×1
+
         for b in 1:Bsize
             p = probs[b, :]
             idx_next[b, 1] = sample(1:Csize, Weights(p))
         end
+
         idx = hcat(idx, idx_next)
     end
     return idx
 end
 
+
 C = vocab_size
+batch_size = 32
+
+xb, yb = get_batch("train")
+W = 0.01f0 .* randn(Float32, C, C)
+W = Flatten([W])
+targets1d = vec(yb)         # longueur B*T
+y_onehot = onehotbatch(targets1d, 1:C)  # C × (B*T)
+num_iters = 1
+L = loss(mse, bigram_activation, xb, y_onehot)
+
+losses, Wtrained = train!(VectReverse.gradient!, L, W, num_iters)
+
+
+m_trained = ManualBigram(Wtrained.components[1])
+max_new_tokens = 200
+idx_gen = generate(m_trained, xb, max_new_tokens)
+println(decode(idx_gen[1, :]))
 
 ##############################
 # ATTENTION MECHANISM
@@ -120,17 +216,50 @@ Implémente l'attention scaled dot-product compatible avec VectReverse.
 Retourne : (d_v × N)
 """
 function scaled_dot_product_attention(Q, K, V, mask=nothing)
+    # Q: d_k × N
+    # K: d_k × N  
+    # V: d_v × N
+    
     d_k = size(Q, 1)
-    scores = K' * Q
+    
+    # Scores d'attention: K^T * Q (N × N)
+    # On transpose K pour obtenir N × d_k, puis multiplie par Q (d_k × N)
+    # Pour transposer K quand c'est un VectNode, on doit faire attention
+    # K est d_k × N, donc K' sera automatiquement N × d_k
+    scores = K' * Q  # (N × d_k) * (d_k × N) = N × N
+    
+    # Scaling
     scores = scores ./ Float32(sqrt(d_k))
+    
+    # Application du masque si fourni (pour attention causale)
     if mask !== nothing
+        # mask devrait être N × N avec -Inf pour les positions futures
         scores = scores .+ mask
     end
-    attn_weights = softmax(scores)
-    output = V * attn_weights'
+    
+    # Softmax sur la dernière dimension (chaque ligne)
+    attn_weights = softmax(scores)  # N × N
+    
+    # Application de l'attention aux valeurs
+    # V est d_v × N, attn_weights est N × N
+    # On veut: d_v × N
+    output = V * attn_weights'  # (d_v × N) * (N × N) = d_v × N
+    
     return output
 end
 
+
+"""
+    SingleHeadAttention
+
+Structure pour une tête d'attention simple avec ses paramètres.
+Compatible avec Flatten pour l'entraînement via VectReverse.grad.
+"""
+struct SingleHeadAttention
+    d_model::Int      # dimension d'entrée/sortie
+    d_k::Int          # dimension des queries/keys
+    d_v::Int          # dimension des values
+end
 
 """
     attention_forward(params::Flatten, X, model_config)
@@ -143,36 +272,27 @@ Fonction forward pour l'attention, compatible avec VectReverse.
 Retourne : (d_model × N)
 """
 function attention_forward(params::Flatten, X, model_config)
-    d_model, d_k, d_v, block_size, batch_size, n_heads = model_config
-    Wq, Wk, Wv, Wo = params.components[1], params.components[2], params.components[3], params.components[4]
-    # If X is a VectNode (training with custom AD), fall back to single-head to keep gradient flow simple
-    if X isa VectReverse.VectNode
-        Q = Wq * X
-        K = Wk * X
-        V = Wv * X
-        mask = create_causal_mask(block_size, batch_size)
-        attn_output = scaled_dot_product_attention(Q, K, V, mask)
-        return Wo * attn_output
-    end
-    # Multi-head path for plain arrays (generation / evaluation)
-    Q = Wq * X
-    K = Wk * X
-    V = Wv * X
-    N = size(X, 2)
-    @assert d_model == d_k * n_heads "d_model must equal d_k * n_heads"
-    Qh = reshape(Q, d_k, n_heads, N)
-    Kh = reshape(K, d_k, n_heads, N)
-    Vh = reshape(V, d_k, n_heads, N)
+    d_model, d_k, d_v, block_size, batch_size = model_config
+    
+    Wq, Wk, Wv, Wo = params.components[1], params.components[2], 
+                     params.components[3], params.components[4]
+    
+    # Projections linéaires
+    Q = Wq * X  # (d_k × d_model) * (d_model × N) = d_k × N
+    K = Wk * X  # (d_k × d_model) * (d_model × N) = d_k × N  
+    V = Wv * X  # (d_v × d_model) * (d_model × N) = d_v × N
+    
+    # Créer le masque causal pour empêcher de voir le futur
+    N = size(X, 2)  # B*T
     mask = create_causal_mask(block_size, batch_size)
-    head_outputs = zeros(Float32, d_model, N)
-    for h in 1:n_heads
-        Qhh = view(Qh, :, h, :)
-        Khh = view(Kh, :, h, :)
-        Vhh = view(Vh, :, h, :)
-        out_h = scaled_dot_product_attention(Qhh, Khh, Vhh, mask)
-        head_outputs[(h-1)*d_k+1:h*d_k, :] .= out_h
-    end
-    return Wo * head_outputs
+    
+    # Attention
+    attn_output = scaled_dot_product_attention(Q, K, V, mask)  # d_v × N
+    
+    # Projection de sortie
+    output = Wo * attn_output  # (d_model × d_v) * (d_v × N) = d_model × N
+    
+    return output
 end
 
 
@@ -185,14 +305,19 @@ Retourne une matrice (B*T × B*T) avec -Inf pour les positions futures.
 function create_causal_mask(T, B)
     N = B * T
     mask = zeros(Float32, N, N)
+    
+    # Pour chaque batch
     for b in 0:B-1
         offset = b * T
+        # Pour chaque position dans la séquence
         for i in 1:T
             for j in (i+1):T
+                # Masquer les positions futures
                 mask[offset + i, offset + j] = -1f10
             end
         end
     end
+    
     return mask
 end
 
@@ -203,14 +328,17 @@ end
 Initialise les paramètres de l'attention (Wq, Wk, Wv, Wo) avec Xavier init.
 Retourne un Flatten([Wq, Wk, Wv, Wo]).
 """
-function initialize_attention_params(d_model, d_k, d_v, n_heads)
-    @assert d_model == d_k * n_heads "d_model must equal d_k * n_heads"
-    # Use combined projection matrices (d_model × d_model)
-    scale = sqrt(2.0f0 / (d_model + d_model))
-    Wq = scale .* randn(Float32, d_model, d_model)
-    Wk = scale .* randn(Float32, d_model, d_model)
-    Wv = scale .* randn(Float32, d_model, d_model)
-    Wo = scale .* randn(Float32, d_model, d_model)
+function initialize_attention_params(d_model, d_k, d_v)
+    # Xavier initialization
+    scale_qk = sqrt(2.0f0 / (d_model + d_k))
+    scale_v = sqrt(2.0f0 / (d_model + d_v))
+    scale_o = sqrt(2.0f0 / (d_v + d_model))
+    
+    Wq = scale_qk .* randn(Float32, d_k, d_model)
+    Wk = scale_qk .* randn(Float32, d_k, d_model)
+    Wv = scale_v .* randn(Float32, d_v, d_model)
+    Wo = scale_o .* randn(Float32, d_model, d_v)
+    
     return Flatten([Wq, Wk, Wv, Wo])
 end
 
@@ -226,141 +354,102 @@ Compatible avec VectReverse.grad pour l'entraînement.
 - config : (vocab_size, d_model, d_k, d_v, block_size, batch_size)
 """
 function attention_activation(Wflat::Flatten, Xb, config)
-    vocab_size, d_model, d_k, d_v, block_size, batch_size, n_heads = config
+    vocab_size, d_model, d_k, d_v, block_size, batch_size = config
+    
+    # Extraire les paramètres
+    # Les 4 premières composantes sont Wq, Wk, Wv, Wo
+    # La 5ème est la table d'embedding
     attention_params = Flatten(Wflat.components[1:4])
-    embedding_table = Wflat.components[5]
-    pos_emb = length(Wflat.components) >= 6 ? Wflat.components[6] : nothing
-    idx = vec(Xb)
+    embedding_table = Wflat.components[5]  # (d_model × vocab_size)
+    
+    # Embedding : convertir indices en vecteurs
+    idx = vec(Xb)  # longueur N = B*T
     N = length(idx)
+    
+    # One-hot encoding
     OH = zeros(Float32, vocab_size, N)
     @inbounds for (j, i) in enumerate(idx)
         OH[i, j] = 1f0
     end
-    X = embedding_table * OH
-    if pos_emb !== nothing
-        # Repeat positional indices per batch
-        T_used = min(block_size, size(pos_emb, 2))
-        pos_indices = repeat(1:T_used, batch_size)[1:N]
-        X = X .+ pos_emb[:, pos_indices]
-    end
-    model_config = (d_model, d_k, d_v, block_size, batch_size, n_heads)
+    
+    # Lookup dans la table d'embedding
+    X = embedding_table * OH  # (d_model × vocab_size) * (vocab_size × N) = d_model × N
+    
+    # Attention forward
+    model_config = (d_model, d_k, d_v, block_size, batch_size)
     output = attention_forward(attention_params, X, model_config)
+    
     return output
 end
 
 
 ##############################
-# TRAINING
+# EXEMPLE D'UTILISATION
 ##############################
 
 """
 Exemple d'entraînement avec attention
 """
-function train_attention_model(; num_iters=1000, d_model=64, d_k=32, d_v=32, n_heads=2, learning_rate=0.001, batch_size_train=32, eval_interval=200)
-    @assert d_model == d_k * n_heads "d_model must equal d_k * n_heads"
-    config = (vocab_size, d_model, d_k, d_v, block_size, batch_size_train, n_heads)
+function train_attention_model()
+    # Hyperparamètres
+    vocab_size = length(chars)
+    d_model = 32      # dimension des embeddings
+    d_k = 8           # dimension queries/keys
+    d_v = 8           # dimension values
+    block_size = 8
+    batch_size = 32
     
-    println("Initializing model...")
-    println("  d_model=$d_model, d_k=$d_k, d_v=$d_v")
-    println("  batch_size=$batch_size_train, block_size=$block_size")
-    attention_params = initialize_attention_params(d_model, d_k, d_v, n_heads)
+    config = (vocab_size, d_model, d_k, d_v, block_size, batch_size)
+    
+    # Initialiser les paramètres
+    attention_params = initialize_attention_params(d_model, d_k, d_v)
     embedding_table = 0.01f0 .* randn(Float32, d_model, vocab_size)
-    pos_emb = 0.01f0 .* randn(Float32, d_model, block_size)  # learnable positional embeddings
-    W_output = 0.01f0 .* randn(Float32, vocab_size, d_model)
-    W_full = Flatten([attention_params.components..., embedding_table, pos_emb, W_output])
     
-    # Fonction de loss qui échantillonne un NOUVEAU batch à chaque appel
+    # Combiner tous les paramètres
+    W = Flatten([attention_params.components..., embedding_table])
+    
+    # Préparer les données
+    xb, yb = get_batch("train")
+    
+    # Pour la loss, on doit projeter la sortie vers vocab_size
+    # On ajoute une matrice de projection finale
+    W_output = 0.01f0 .* randn(Float32, vocab_size, d_model)
+    W_full = Flatten([W.components..., W_output])
+    
+    # Fonction de loss
     function attention_loss(W_params)
-        xb_new, yb_new = get_batch("train", batch_size=batch_size_train)
-        # Components: 1:4 attention, 5 embedding, 6 pos_emb, 7 output
-        attn_out = attention_activation(Flatten(W_params.components[1:6]), xb_new, config)
-        logits = W_params.components[7] * attn_out
-        targets1d = vec(yb_new)
-        Ntargets = length(targets1d)
-        # log-softmax (VectReverse aware)
-        log_probs = logits isa VectReverse.VectNode ? VectReverse.logsoftmax(logits; dims=1) : Flux.logsoftmax(logits; dims=1)
-        Y = zeros(Float32, vocab_size, Ntargets)
-        @inbounds for (j, t) in enumerate(targets1d)
-            Y[t, j] = 1f0
-        end
-        if log_probs isa VectReverse.VectNode
-            # Keep as VectNode for AD
-            ce = -(sum(log_probs .* Y) / Ntargets)
-            return ce  # DO NOT unwrap value
-        else
-            return -(sum(log_probs .* Y) / Ntargets)
-        end
+        # Attention output: d_model × N
+        attn_out = attention_activation(Flatten(W_params.components[1:5]), xb, config)
+        
+        # Projection vers logits: vocab_size × N
+        W_out = W_params.components[6]
+        logits = W_out * attn_out
+        
+        # Loss MSE avec one-hot targets
+        targets1d = vec(yb)
+        y_onehot = onehotbatch(targets1d, 1:vocab_size)
+        
+        diff = logits .- y_onehot
+        return sum(diff .^ 2) / length(targets1d)
     end
     
     L(w) = attention_loss(w)
     
-    println("\nTraining for $num_iters iterations (lr=$learning_rate)...")
-    println("Progress will be shown every $eval_interval iterations\n")
+    # Entraînement
+    println("Entraînement du modèle avec attention...")
+    losses, W_trained = train!(VectReverse.gradient!, L, W_full, 
+                               num_iters=1, 
+                               rule=Optimisers.Adam(0.001))
     
-    # Entraînement par blocs pour afficher la progression
-    losses = Float64[L(W_full)]
-    W_current = W_full
+    println("Loss finale: ", losses[end])
     
-    for block_start in 1:eval_interval:num_iters
-        block_iters = min(eval_interval, num_iters - block_start + 1)
-        block_losses, W_current = train!(VectReverse.gradient!, L, W_current, 
-                                         num_iters=block_iters, 
-                                         rule=Optimisers.Adam(learning_rate),
-                                         losses=Float64[])
-        append!(losses, block_losses)
-        
-        iter_num = block_start + block_iters - 1
-        println("Iter $iter_num/$num_iters - Loss: $(round(block_losses[end], digits=4))")
-    end
-    
-    W_trained = W_current
-    
-    println("\n" * "="^50)
-    println("Training complete!")
-    println("  Initial loss: ", round(losses[1], digits=4))
-    println("  Final loss: ", round(losses[end], digits=4))
-    improvement = (losses[1] - losses[end]) / losses[1] * 100
-    println("  Improvement: ", round(improvement, digits=2), "%")
-    println("="^50)
-    
-    return W_trained, config, losses
+    return W_trained, config
 end
 
-# Perplexity / validation evaluation helper
-function evaluate_perplexity(W_params, config; num_batches=20, batch_size_eval=32)
-    vocab_size, d_model, d_k, d_v, block_size_cfg, batch_size_train_cfg, n_heads = config
-    total_loss = 0.0
-    total_tokens = 0
-    for _ in 1:num_batches
-        xb_val, yb_val = get_batch("val", batch_size=batch_size_eval)
-        attn_out = attention_activation(Flatten(W_params.components[1:6]), xb_val, config)
-        logits = W_params.components[7] * attn_out
-        targets = vec(yb_val)
-        Ntargets = length(targets)
-        if logits isa VectReverse.VectNode
-            log_probs = VectReverse.logsoftmax(logits; dims=1)
-        else
-            log_probs = Flux.logsoftmax(logits; dims=1)
-        end
-        Y = zeros(Float32, vocab_size, Ntargets)
-        @inbounds for (j, t) in enumerate(targets)
-            Y[t, j] = 1f0
-        end
-        if log_probs isa VectReverse.VectNode
-            batch_loss = -(sum(log_probs .* Y).value / Ntargets)
-        else
-            batch_loss = -(sum(log_probs .* Y) / Ntargets)
-        end
-        total_loss += batch_loss * Ntargets
-        total_tokens += Ntargets
-    end
-    avg_nll = total_loss / total_tokens
-    ppl = exp(avg_nll)
-    return avg_nll, ppl
-end
+w, c = train_attention_model()
 
 ##############################
-# GENERATION
+# GÉNÉRATION AVEC ATTENTION
 ##############################
 
 """
@@ -375,9 +464,8 @@ struct ManualAttention
     Wv::Matrix{Float32}
     Wo::Matrix{Float32}
     embedding_table::Matrix{Float32}
-    pos_emb::Matrix{Float32}
     W_output::Matrix{Float32}
-    config::Tuple{Int,Int,Int,Int,Int,Int}
+    config::Tuple{Int,Int,Int,Int,Int,Int}  # (vocab_size, d_model, d_k, d_v, block_size, batch_size)
 end
 
 """
@@ -392,8 +480,7 @@ function ManualAttention(W_trained::Flatten, config)
         W_trained.components[3],  # Wv
         W_trained.components[4],  # Wo
         W_trained.components[5],  # embedding_table
-        W_trained.components[6],  # pos_emb
-        W_trained.components[7],  # W_output
+        W_trained.components[6],  # W_output
         config
     )
 end
@@ -406,41 +493,46 @@ Forward pass du modèle d'attention (sans VectNode, pour la génération).
 Retourne : logits de forme (vocab_size × B × T)
 """
 function (m::ManualAttention)(idx)
-    vocab_size, d_model, d_k, d_v, block_size_config, batch_size_config, n_heads = m.config
+    vocab_size, d_model, d_k, d_v, block_size_config, batch_size_config = m.config
+    
     B, T = size(idx)
-    idx_vec = vec(idx)
+    
+    # Embedding
+    idx_vec = vec(idx)  # B*T
     N = length(idx_vec)
+    
     OH = zeros(Float32, vocab_size, N)
     @inbounds for (j, i) in enumerate(idx_vec)
         OH[i, j] = 1f0
     end
-    X = m.embedding_table * OH
-    # Add positional embeddings (repeat positions per batch)
-    T_used = min(T, size(m.pos_emb, 2))
-    pos_indices = repeat(1:T_used, size(idx,1))[1:N]
-    X = X .+ m.pos_emb[:, pos_indices]
-    Q = m.Wq * X
-    K = m.Wk * X
-    V = m.Wv * X
-    N = size(X,2)
-    @assert d_model == d_k * n_heads
-    Qh = reshape(Q, d_k, n_heads, N)
-    Kh = reshape(K, d_k, n_heads, N)
-    Vh = reshape(V, d_k, n_heads, N)
+    
+    X = m.embedding_table * OH  # d_model × N
+    
+    # Projections Q, K, V
+    Q = m.Wq * X  # d_k × N
+    K = m.Wk * X  # d_k × N
+    V = m.Wv * X  # d_v × N
+    
+    # Attention avec masque causal
+    scores = K' * Q ./ Float32(sqrt(d_k))  # N × N
+    
+    # Masque causal
     mask = create_causal_mask(T, B)
-    head_outputs = similar(Q)
-    for h in 1:n_heads
-        Qhh = view(Qh, :, h, :)
-        Khh = view(Kh, :, h, :)
-        Vhh = view(Vh, :, h, :)
-        scores = Khh' * Qhh ./ Float32(sqrt(d_k))
-        scores = scores .+ mask
-        attn_weights = softmax(scores)
-        out_h = Vhh * attn_weights'
-        head_outputs[(h-1)*d_k+1:h*d_k, :] .= out_h
-    end
-    output = m.Wo * head_outputs
-    logits = m.W_output * output
+    scores = scores .+ mask
+    
+    # Softmax
+    attn_weights = softmax(scores)  # N × N
+    
+    # Application aux valeurs
+    attn_out = V * attn_weights'  # d_v × N
+    
+    # Projection de sortie
+    output = m.Wo * attn_out  # d_model × N
+    
+    # Projection vers logits
+    logits = m.W_output * output  # vocab_size × N
+    
+    # Reshape en (vocab_size × B × T)
     return reshape(logits, vocab_size, B, T)
 end
 
@@ -457,24 +549,44 @@ Retourne : séquence augmentée (B × (T + max_new_tokens))
 """
 function generate(m::ManualAttention, idx, max_new_tokens; temperature=1.0)
     vocab_size, d_model, d_k, d_v, block_size, batch_size_config = m.config
+    
     for _ in 1:max_new_tokens
+        # Tronquer au block_size si nécessaire (attention causale)
         T_current = size(idx, 2)
-        idx_cond = T_current > block_size ? idx[:, end-block_size+1:end] : idx
-        logits = m(idx_cond)
-        last_logits = logits[:, :, end]
-        last_logits = permutedims(last_logits, (2, 1))
+        if T_current > block_size
+            idx_cond = idx[:, end-block_size+1:end]
+        else
+            idx_cond = idx
+        end
+        
+        # Forward pass
+        logits = m(idx_cond)  # vocab_size × B × T
+        
+        # Prendre les logits du dernier token
+        last_logits = logits[:, :, end]  # vocab_size × B
+        last_logits = permutedims(last_logits, (2, 1))  # B × vocab_size
+        
+        # Appliquer la température
         if temperature != 1.0
             last_logits = last_logits ./ temperature
         end
-        probs = softmax(last_logits)
+        
+        # Softmax pour obtenir les probabilités
+        probs = softmax(last_logits)  # B × vocab_size
+        
         Bsize, Vsize = size(probs)
-        idx_next = similar(idx[:, 1:1])
+        idx_next = similar(idx[:, 1:1])  # B × 1
+        
+        # Échantillonner pour chaque élément du batch
         for b in 1:Bsize
             p = probs[b, :]
             idx_next[b, 1] = sample(1:Vsize, Weights(p))
         end
+        
+        # Ajouter le nouveau token
         idx = hcat(idx, idx_next)
     end
+    
     return idx
 end
 
@@ -490,64 +602,54 @@ Fonction helper pour générer du texte à partir d'un prompt.
 
 Retourne : texte généré
 """
-function _topk_probs(logits_row::AbstractVector{<:Real}, k::Int)
-    k = min(k, length(logits_row))
-    idxs = partialsortperm(logits_row, rev=true, 1:k)
-    top_logits = logits_row[idxs]
-    shifted = top_logits .- maximum(top_logits)
-    exps = exp.(shifted)
-    probs = exps ./ sum(exps)
-    return idxs, probs
-end
-
-function generate_text(W_trained, config, prompt=""; max_new_tokens=100, temperature=1.0, top_k=nothing)
-    vocab_size, d_model, d_k, d_v, block_size, batch_size_config, n_heads = config
+function generate_text(W_trained, config, prompt=""; max_new_tokens=100, temperature=1.0)
+    vocab_size, d_model, d_k, d_v, block_size, batch_size_config = config
+    
+    # Créer le modèle
     m = ManualAttention(W_trained, config)
+    
+    # Encoder le prompt ou commencer avec un token aléatoire
     if isempty(prompt)
+        # Commencer avec un token aléatoire
         idx = rand(1:vocab_size, 1, 1)
     else
+        # Encoder le prompt
         encoded = encode(prompt)
+        # Limiter au block_size si nécessaire
         if length(encoded) > block_size
             encoded = encoded[end-block_size+1:end]
         end
-        idx = reshape(encoded, 1, :)
+        idx = reshape(encoded, 1, :)  # 1 × T (batch size = 1)
     end
-    # If top_k provided, override sampling loop locally
-    if top_k === nothing
-        idx_generated = generate(m, idx, max_new_tokens, temperature=temperature)
-    else
-        for _ in 1:max_new_tokens
-            T_current = size(idx, 2)
-            idx_cond = T_current > block_size ? idx[:, end-block_size+1:end] : idx
-            logits = m(idx_cond)[:, :, end]  # vocab_size × B
-            logits = permutedims(logits, (2,1))  # B × vocab_size
-            if temperature != 1.0
-                logits = logits ./ temperature
-            end
-            Bsize, Vsize = size(logits)
-            idx_next = similar(idx[:, 1:1])
-            for b in 1:Bsize
-                row = logits[b, :]
-                kidxs, kprobs = _topk_probs(row, top_k)
-                choice = sample(kidxs, Weights(kprobs))
-                idx_next[b, 1] = choice
-            end
-            idx = hcat(idx, idx_next)
-        end
-        idx_generated = idx
-    end
+    
+    # Générer
+    idx_generated = generate(m, idx, max_new_tokens, temperature=temperature)
+    
+    # Décoder
     return decode(vec(idx_generated[1, :]))
 end
-# Exemple d'utilisation:
-# Pour un entraînement rapide (test):
-w, c, losses = train_attention_model(num_iters=500)
 
-# Pour un bon résultat (recommandé):
-w, c, losses = train_attention_model(num_iters=5000, d_model=64, d_k=32, d_v=32, n_heads=2)
+# Après avoir entraîné le modèle
+w, c = train_attention_model()
 
-# Pour générer du texte:
-text = generate_text(w, c, "", max_new_tokens=200, temperature=0.8)
-println(text)
+# Créer le modèle de génération
+m_attention = ManualAttention(w, c)
 
-nll, ppl = evaluate_perplexity(w, c; num_batches=50)
-println("Val NLL=$(round(nll, digits=4))  Val PPL=$(round(ppl, digits=2))")
+# Option 1: Générer à partir d'un batch existant
+xb_test, _ = get_batch("val")
+generated_idx = generate(m_attention, xb_test[1:1, :], 200)
+println("Génération à partir du batch:")
+println(decode(vec(generated_idx[1, :])))
+
+# Option 2: Générer à partir d'un prompt (plus simple)
+println("\nGénération avec prompt vide:")
+text1 = generate_text(w, c, "", max_new_tokens=200, temperature=1.0)
+println(text1)
+
+# Option 3: Générer à partir d'un prompt spécifique
+if length(chars) > 0 && haskey(stoi, first(chars))
+    prompt = string(first(chars))
+    println("\nGénération avec prompt '$prompt':")
+    text2 = generate_text(w, c, prompt, max_new_tokens=200, temperature=0.8)
+    println(text2)
+end
