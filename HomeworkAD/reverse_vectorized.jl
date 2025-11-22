@@ -356,14 +356,22 @@ Base.getindex(n::VectNode, i...) = getindex(n.value, i...)
 Base.eachindex(n::VectNode) = eachindex(n.value)
 Base.length(n::VectNode) = length(n.value)
 Base.size(n::VectNode) = size(n.value)
-
+Base.size(n::VectNode, dim::Int) = size(n.value, dim)
+# reshape pour VectNode - le gradient doit être reshaped dans l'autre sens
+Base.reshape(n::VectNode, dims...) = VectNode(
+    reshape(n.value, dims...), 
+    zero(reshape(n.value, dims...)), 
+    [(n, Δ -> reshape(Δ, size(n.value)))]
+)
 # Pour la fonction ones avec une matrice
 Base.ones(x::Vector{Float64}) = fill(1.0, size(x))
 Base.ones(x::Matrix{Float64}) = fill(1.0, size(x))
 Base.ones(x::Matrix{Vector}) = fill(1.0, size(x))
 # Pour ones avec un VectNode
 Base.ones(x::VectNode) = VectNode(ones(x.value), zero(x.value), Tuple{VectNode, Function}[])
-
+# Transpose et adjoint pour VectNode
+Base.transpose(n::VectNode) = VectNode(transpose(n.value), zero(transpose(n.value)), [(n, Δ -> transpose(Δ))])
+Base.adjoint(n::VectNode) = VectNode(n.value', zero(n.value'), [(n, Δ -> Δ')])
 # Pour ones avec une taille donnée (si nécessaire)
 Base.ones(dims::Tuple{Int,Int}) = fill(1.0, dims)
 Base.copy(d::Forward.Dual) = Forward.Dual(d.value, d.derivative)
