@@ -9,29 +9,43 @@ using BSON # load preprocessed data
 
 Random.seed!(1337)
 
+###################### Global var ######################
 MODEL_OUTPUT_FILE = joinpath("Transformers/", "BSON_files/","single_head_transformer_weights.bson")
+BATCH_SIZE = 16      # Number of sequences processed in parallel 
+BLOCK_SIZE = 32      # Length of the context 
 
-
-# Load Preprocessed Data 
+# load preprocessed data 
 const DATA_FILE = joinpath("Transformers/","BSON_files/","preprocessed_data.bson")
 data_loaded = BSON.load(DATA_FILE)
 
+# extract value from stored file 
 train_data = data_loaded[:"train_data"]
 val_data   = data_loaded[:"val_data"]
-stoi       = data_loaded[:"stoi"]
-itos       = data_loaded[:"itos"]
+stoi       = data_loaded[:"stoi"]  # dictionnary mapping string to integer --> encoding 
+itos       = data_loaded[:"itos"]  # dictionnary mapping integer to string --> decoding
 vocab_size = data_loaded[:"vocab_size"]
 
-# ENCODING / DECODING 
 
-# String -> Vector{Int} (uses the loaded stoi)
+
+###################### Utils ######################
+
+####### Encoding / Decoding 
+
 function encode(s::AbstractString; stoi=stoi)
-    # with input is pre-tokenized if used for prompting.
+    """
+    Encode a token(string) as a integer relative to the given dictionnary building during Preprocessing
+    Ex: encode("attention") -->  42
+    """
     return [get(stoi, lowercase(t), stoi["[UNK]"]) for t in split(s)]
 end
 
-# Vector -> String 
+
 function decode(v::AbstractVector{<:Integer}; itos=itos)
+    """
+    Decode an int into the corresponding token given a the dictionnary build during Preprocessing
+    Ex: decode(157) --> "need"
+    """
+
     ignored_tokens = Set(["[EOS]", "[BOS]", "[PAD]", "[UNK]"]) 
     
     words = [itos[i] for i in v]
@@ -41,20 +55,25 @@ function decode(v::AbstractVector{<:Integer}; itos=itos)
 end
 
 
-batch_size = 16      # Number of sequences processed in parallel 
-block_size = 32      # Length of the context 
+####### Attention mechanism
 
+struct SingleHeadAttention
+    d_model::Int      # input/output dimension
+    d_k::Int          # queries/keys dimension
+    d_v::Int          # values dimension
+end
 
-
-xb, yb = get_batch("train")
-
-println("inputs size: ", size(xb))
-println("targets size: ", size(yb))
-println("Vocabulary Size (V): ", vocab_size)
-
-# ATTENTION MECHANISM
 
 function scaled_dot_product_attention(Q, K, V, mask=nothing)
+    """ 
+    Compute head of attention with the given matrix Q, K, V 
+    
+    @param Q : query matrix
+    @param K : key matrix
+    @param V : value matrix
+    @return: head of attention
+    """
+
     # Q: d_k × N
     # K: d_k × N  
     # V: d_v × N
@@ -79,20 +98,13 @@ function scaled_dot_product_attention(Q, K, V, mask=nothing)
 end
 
 
-function get_batch(split)
-    data = split == "train" ? train_data : val_data
-    # Randomly draw starting positions
-    ix = rand(1:length(data)-block_size, batch_size)
-
-    # Create the input matrix x (batch_size × block_size)
-    x = [data[i + t] for i in ix, t in 0:block_size-1]
-
-    # Create the target matrix y (batch_size × block_size)
-    y = [data[i + t + 1] for i in ix, t in 0:block_size-1]
-    return x, y
-end
-
 function create_causal_mask(T, B)
+    """
+    Create a matrix NxN ( N = B *T ) with:
+        - upper triangle = -inf
+        - lower triangle = 0 
+    """
+
     N = B * T
     mask = zeros(Float32, N, N)
 
@@ -112,13 +124,6 @@ function create_causal_mask(T, B)
     return mask
 end
 
-
-
-struct SingleHeadAttention
-    d_model::Int      # input/output dimension
-    d_k::Int          # queries/keys dimension
-    d_v::Int          # values dimension
-end
 
 
 function attention_forward(params::Flatten, X, model_config)
@@ -144,21 +149,6 @@ function attention_forward(params::Flatten, X, model_config)
 end
 
 
-function create_causal_mask(T, B)
-    N = B * T
-    mask = zeros(Float32, N, N)
-
-    for b in 0:B-1
-        offset = b * T
-        for i in 1:T
-            for j in (i+1):T
-                mask[offset + i, offset + j] = -1f10    # Mask future positions (keys j > queries i)
-            end
-        end
-    end
-    
-    return mask
-end
 
 function initialize_attention_params(d_model, d_k, d_v)
     scale_qk = Float32(sqrt(2.0 / (d_model + d_k)))
@@ -199,7 +189,23 @@ function attention_activation(Wflat::Flatten, Xb, config)
     return output
 end
 
-################# USAGE EXAMPLE ##################################
+
+
+###################### USAGE  ######################
+
+function get_batch(split)
+    data = split == "train" ? train_data : val_data
+    # Randomly draw starting positions
+    ix = rand(1:length(data)-BLOCK_SIZE, BATCH_SIZE)
+
+    # Create the input matrix x (batch_size × BLOCK_SIZE)
+    x = [data[i + t] for i in ix, t in 0:BLOCK_SIZE-1]
+
+    # Create the target matrix y (batch_size × BLOCK_SIZE)
+    y = [data[i + t + 1] for i in ix, t in 0:BLOCK_SIZE-1]
+    return x, y
+end
+
 
 function train_attention_model(;embedding_dimension=16, dim_k=4,dim_v=4, num_iters_to_run=100, learning_rate=0.001, dir="Transformers")
     d_model = embedding_dimension 
@@ -207,8 +213,8 @@ function train_attention_model(;embedding_dimension=16, dim_k=4,dim_v=4, num_ite
     d_k = dim_k           # queries/keys dimension (reduced from 8)
     d_v = dim_v           # values dimension (reduced from 8)
     
-    global vocab_size, block_size, batch_size
-    config = (vocab_size, d_model, d_k, d_v, block_size, batch_size)
+    global vocab_size, BLOCK_SIZE, BATCH_SIZE
+    config = (vocab_size, d_model, d_k, d_v, BLOCK_SIZE, BATCH_SIZE)
 
     attention_params = initialize_attention_params(d_model, d_k, d_v)
     
@@ -397,6 +403,9 @@ using BSON
 
 
 function load_trained_model(file_path::String)
+    """
+    Load a trained model stored in file path 
+    """
     println("Loading model from $file_path...")
     
     loaded_data = BSON.load(file_path)
@@ -409,19 +418,3 @@ function load_trained_model(file_path::String)
     
     return m, W_trained, config
 end
-
-# # train a new model 
-# N_ITER = 100
-# L_RATE = 0.01
-# EMB_DIM = 64
-# DIM_K = 16
-# DIM_V = 16
-# w_trained, c_config = train_attention_model(embedding_dimension=EMB_DIM, dim_k=DIM_K, dim_v= DIM_V, num_iters_to_run=N_ITER, learning_rate=L_RATE)
-# text_output = generate_text(w_trained, c_config, "The boy said", max_new_tokens=50, temperature=1.2)
-# println(text_output)
-
-
-# Uncomment to load an already trained model 
-# load_trained_model("Transformers/single_head_transformer_weights.bson")
-# text_output = generate_text(w_trained, c_config, "The king said", max_new_tokens=50, temperature=1.6)
-# println(text_output)
