@@ -19,7 +19,7 @@ function Optimisers.init(rule::Optimisers.AbstractRule, w::Flatten)
 	return Flatten(map(W -> Optimisers.init(rule, W), w.components))
 end
 
-function train!(gradient!, L, w, num_iters,; rule = Optimisers.Descent(),  losses = [L(w)], states = Optimisers.init(rule, w))
+function train!(gradient!, L, w, num_iters; rule = Optimisers.Descent(),  losses = [L(w)], states = Optimisers.init(rule, w))
 	g = zero(w) # preallocation
 	for _ in 1:num_iters
 		∇ = gradient!(L, g, w)

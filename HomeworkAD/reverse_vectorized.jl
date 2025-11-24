@@ -1,26 +1,30 @@
 include("flatten.jl")
+include("forward.jl")
 
 module VectReverse
-
 
 using Main.Forward
 const relu = Main.relu
 const Flatten = Main.Flatten
+
 mutable struct VectNode
 	value::Any
 	derivative::Any
 	parents::Vector{Tuple{VectNode, Function}}
 end
+
 import Base: zero
 zero(x::VectNode) = VectNode(
-    zero(x.value),      # même shape que value, mais rempli de zéros
-    zero(x.derivative), # même shape que derivative, mais rempli de zéros
-    Tuple{VectNode, Function}[]  # pas de parents
+    zero(x.value),      # same shape as value, but filled with zeros
+    zero(x.derivative), # same shape as derivative, but filled with zeros
+    Tuple{VectNode, Function}[]  # no parents
 )
+
 # For scalars
 VectNode(x::Number) = VectNode(x, zero(x), Vector{Tuple{VectNode,Function}}())
 VectNode(value, derivative) = VectNode(value, derivative, Tuple{VectNode, Function}[])
 VectNode(x::VectNode) = x
+
 # For vectors / matrix
 VectNode(x::AbstractArray) = VectNode(x, zeros(size(x)), Vector{Tuple{VectNode,Function}}())
 VectNode(x::Main.Forward.Dual) = VectNode(x, zero(x))
@@ -37,7 +41,7 @@ end
 # For ReLU
 function Base.broadcasted(::typeof(relu), x::VectNode)
     y = max.(x.value, 0.0)
-    dydx = @. ifelse(x.value >= 0.0, 1.0, 0.0) # The >= ensures gradient is 0 at 0 -> fixed the error
+    dydx = @. ifelse(x.value >= 0.0, 1.0, 0.0) # The >= ensures gradient is 0 at 0 -> fixed the error for first order
 
     return VectNode(
         y,
@@ -93,7 +97,7 @@ function Base.:*(A::VectNode, x::AbstractMatrix)
 	)
 end
 
-# For x * y where both are VectNode (element-wise or matrix depending on values)
+# For x * y where both are VectNode 
 function Base.:*(x::VectNode, y::VectNode)
 	return VectNode(
 		x.value * y.value,
@@ -337,6 +341,7 @@ end
 function Base.:*(x::Vector{Float64}, y::Vector{Float64})
     return dot(x, y)
 end
+
 # softmax for VectNode (row-wise softmax)
 import ..softmax # defines new methods for the existing softmax function instead of defining a new VectReverse.softmax functions
 function softmax(x::VectNode)
@@ -348,49 +353,40 @@ function softmax(x::VectNode)
 end
 
 
-Base.ndims(::Type{VectNode}) = 0  # Car VectNode est un type wrapper
-Base.ndims(x::VectNode) = ndims(x.value)  # Délègue à la valeur contenue
+Base.ndims(::Type{VectNode}) = 0  
+Base.ndims(x::VectNode) = ndims(x.value)  
 Base.iterate(n::VectNode) = Base.iterate(n.value)
 Base.iterate(n::VectNode, s) = Base.iterate(n.value, s)
 Base.getindex(n::VectNode, i...) = getindex(n.value, i...)
 Base.eachindex(n::VectNode) = eachindex(n.value)
 Base.length(n::VectNode) = length(n.value)
 Base.size(n::VectNode) = size(n.value)
-Base.size(n::VectNode, dim::Int) = size(n.value, dim)
-# reshape pour VectNode - le gradient doit être reshaped dans l'autre sens
-Base.reshape(n::VectNode, dims...) = VectNode(
-    reshape(n.value, dims...), 
-    zero(reshape(n.value, dims...)), 
-    [(n, Δ -> reshape(Δ, size(n.value)))]
-)
-# Pour la fonction ones avec une matrice
+
+# For function ones  with Matrix/Vector inputs
 Base.ones(x::Vector{Float64}) = fill(1.0, size(x))
 Base.ones(x::Matrix{Float64}) = fill(1.0, size(x))
 Base.ones(x::Matrix{Vector}) = fill(1.0, size(x))
-# Pour ones avec un VectNode
+# For ones with VectNode
 Base.ones(x::VectNode) = VectNode(ones(x.value), zero(x.value), Tuple{VectNode, Function}[])
-# Transpose et adjoint pour VectNode
-Base.transpose(n::VectNode) = VectNode(transpose(n.value), zero(transpose(n.value)), [(n, Δ -> transpose(Δ))])
-Base.adjoint(n::VectNode) = VectNode(n.value', zero(n.value'), [(n, Δ -> Δ')])
-# Pour ones avec une taille donnée (si nécessaire)
+
 Base.ones(dims::Tuple{Int,Int}) = fill(1.0, dims)
 Base.copy(d::Forward.Dual) = Forward.Dual(d.value, d.derivative)
 Base.transpose(d::Forward.Dual) = d
 Base.adjoint(d::Forward.Dual) = d
-# Implémentation de copyto! pour le broadcasting avec VectNode
+
+# Implementation of copyto! 
 function Base.copyto!(dest::VectNode, bc::Broadcast.Broadcasted{<:Any})
-    # Copie les valeurs
+    # Copy values
     copyto!(dest.value, bc)
     
-    # Réinitialise les dérivées et parents
+    # Initialize derivative and parents
     dest.derivative = zero(dest.value)
     empty!(dest.parents)
     
-    # Si le broadcast implique des VectNodes, nous devons ajouter les relations de parenté
+    # If arguments contain VectNode, set up the parents
     args = bc.args
     for arg in args
         if arg isa VectNode
-            # La dérivée dépend de l'opération de broadcast
             push!(dest.parents, (arg, Δ -> Δ))
         end
     end
@@ -425,7 +421,6 @@ function backward!(f::VectNode)
 end
 
 function gradient!(f, g::Flatten, x::Flatten)
-	# Converts each component to a VectNode
 	x_nodes = Flatten(VectNode.(x.components))
 	# function calculation
 	expr = f(x_nodes)
@@ -444,34 +439,62 @@ end
 
 gradient(f, x) = gradient!(f, zero(x), x)
 
-
+# ==============================================================================================
+### Second order: Hessian
+# ==============================================================================================
 
 function vector_to_flatten(v::AbstractVector, template::Flatten)
     comps = Vector{Any}(undef, length(template.components))
     idx = 1
     for (j, comp_template) in enumerate(template.components)
-        n = length(comp_template)                    # nb d’éléments dans ce bloc
-        slice = @view v[idx:idx + n - 1]             # vue paresseuse
-        comps[j] = reshape(slice, size(comp_template))  # même shape que le template
+        n = length(comp_template)                    # nb of elements in this component
+        slice = @view v[idx:idx + n - 1]             
+        comps[j] = reshape(slice, size(comp_template))  # same shape as the template component
         idx += n
     end
-    return Flatten(comps)  # le constructeur infère le bon Union type
+    return Flatten(comps)  
 end
 
 function hessian(f, x::Flatten)
-    # 1. On aplatit les paramètres en un vecteur
-    x_vec = flatten_to_vector(x)  # Vector{Float64}, par ex.
+    # We flatten parameters into a vector 
+    x_vec = flatten_to_vector(x)  
 
-    # 2. On définit g : ℝ^n (ou Dual^n) -> ℝ^n
-    #    g(v) = grad_f( unflatten(v) ), re-aplati
+    # We define g : ℝ^n (or Dual^n) -> ℝ^n
+    #    g(v) = grad_f( unflatten(v) ), flattened again
     function g(v)
-        x_flat_v = vector_to_flatten(v, x)     # v peut être un Vector{Forward.Dual}
+        x_flat_v = vector_to_flatten(v, x)     
         g_flat   = gradient(f, x_flat_v)       # gradient(f, ::Flatten) -> Flatten
-        return flatten_to_vector(g_flat)       # Vector (Float64 ou Dual)
+        return flatten_to_vector(g_flat)       # Vector (Float64 or Dual)
     end
 
-    # 3. Hessienne = Jacobienne de g en x_vec
+    # 3. Hessian = Jacobian of g in x_vec
     return Forward.jacobian(g, x_vec)
+end
+
+# ==============================================================================================
+### Transformers
+# ==============================================================================================
+
+# Dans le module VectReverse
+
+# Pour la transposée (Transpose)
+function Base.transpose(x::VectNode)
+    return VectNode(
+        transpose(x.value),
+        zero(transpose(x.value)),
+        # La dérivée de transpose(f) par rapport à f est transpose(Δ)
+        [(x, Δ -> transpose(Δ))] 
+    )
+end
+
+# Pour l'adjointe (Adjoint), qui est souvent utilisée dans les produits matriciels.
+function Base.adjoint(x::VectNode)
+    return VectNode(
+        adjoint(x.value),
+        zero(adjoint(x.value)),
+        # La dérivée de adjoint(f) par rapport à f est adjoint(Δ)
+        [(x, Δ -> adjoint(Δ))]
+    )
 end
 
 end
