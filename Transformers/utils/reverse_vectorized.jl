@@ -1,4 +1,3 @@
-include("flatten.jl")
 
 module VectReverse
 

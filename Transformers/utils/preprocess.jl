@@ -1,11 +1,13 @@
-using WordTokenizers # Requires Pkg.add("WordTokenizers")
+using WordTokenizers
 using StatsBase
-using BSON # Requires Pkg.add("BSON")
+using BSON 
 
-# --- Configuration ---
+
+#################### parameters ##################
+
 const DIR = "Transformers/"
-const INPUT_FILE = joinpath(DIR,"input.txt")
-const OUTPUT_FILE = joinpath(DIR,"preprocessed_data.bson")
+const INPUT_FILE = joinpath(DIR,"corpus","input.txt")
+const OUTPUT_FILE = joinpath(DIR,"BSON_files","preprocessed_data.bson")
 
 # Minimum frequency threshold for a word to be included in the vocabulary
 const MIN_FREQ = 10
@@ -13,19 +15,28 @@ const MIN_FREQ = 10
 # Train/validation split ratio
 const TRAIN_RATIO = 0.8
 
-# --- Special Tokens ---
-# Special tokens must be the first in our vocabulary to have low indices
 const SPECIAL_TOKENS = ["[PAD]", "[UNK]", "[BOS]", "[EOS]"]
 
-# --- 1. Load and Tokenize (using WordTokenizers) ---
+
+
+
+#################### utils ##################
 
 function tokenize_and_clean(text::String)
-    # 1. Lowercase and Tokenize
+    """
+    Take an input text and return it as list of tokens
+    Example: 
+    tokenize_and_clean("Attention is all you need.") 
+        --> ["attention, is", "all", "you", "need", "[EOS]"]
+
+    @param text : a corpus as a long String
+    @return list of String tokenized
+    """
+
     text = lowercase(text)
-    # Use WordTokenizers for robust word/punctuation separation
     tokens = tokenize(text)
 
-    # 2. Replace end-of-sentence symbols with [EOS]
+    # Replace end of sentence symbols by [EOS]
     tokens_processed = String[]
     for token in tokens
         if token in (".", "!", "?", "\n")
@@ -38,14 +49,22 @@ function tokenize_and_clean(text::String)
     return tokens_processed
 end
 
-# --- 2. Vocabulary Building and Filtering ---
 
 function build_vocab(tokens::Vector{String})
+    """
+    Build a vocabulary based on the token list received.
+    Steps: 
+        1. Count the frequency of each tokens
+        2. Drop tokens with frequency < MIN_FREQ
+        3. Create a filtered vocabulary with Special tokens added
+        4. Associate each token to an indice in a dict , and revertebly each indice to its token
+    Return the 2 dictionaries and len(vocab)
+    """
+
     # Count token frequencies
     token_counts = countmap(tokens)
     
     # Filter tokens by minimum frequency threshold
-    # Ensure special tokens are not filtered
     filtered_tokens = Set(k for (k, v) in token_counts if v >= MIN_FREQ)
     
     # Build the final vocabulary (Special Tokens + Filtered Tokens)
@@ -58,9 +77,18 @@ function build_vocab(tokens::Vector{String})
     return stoi, itos, length(vocab)
 end
 
-# --- 3. Text Encoding ---
+
+
 
 function encode_tokens(tokens::Vector{String}, stoi::Dict{String, Int})
+    """
+    Replace each token by its encoding in the stoi dict 
+    Example: 
+        ["attention", "is", "all", "you", "need"]
+            |           |     |       |      |
+        [   42,         4 ,   336,    1024,   157 ] 
+    """
+
     # Index of [UNK] to replace rare tokens
     unk_index = stoi["[UNK]"]
     
@@ -70,30 +98,34 @@ function encode_tokens(tokens::Vector{String}, stoi::Dict{String, Int})
     return encoded_data
 end
 
-# --- Main Preprocessing and Saving Function ---
 
 function run_preprocess()
-    println("--- Starting Preprocessing (WordTokenizers) ---")
+
+    """
+    Read an input text -, preprocess it and store the results into a .BSON file 
+    """
+
+    println("Starting Preprocessing...")
     
     # 1. Read file
     text = read(INPUT_FILE, String)
 
     # 2. Tokenization and Cleaning
+    println("Begin tokenizing...")
     tokens = tokenize_and_clean(text)
     println("Total number of tokens: $(length(tokens))")
 
     # 3. Vocabulary Building
+    println("Begin vocabulary building...")
     stoi, itos, vocab_size = build_vocab(tokens)
     println("Final vocabulary size (V): $vocab_size (after filtering Min Freq = $MIN_FREQ)")
-    if vocab_size > 10000
-        println("⚠️ WARNING: Vocabulary size ($vocab_size) is high. This will significantly slow down training on CPU.")
-        println("Consider increasing MIN_FREQ to reduce V.")
-    end
 
     # 4. Encoding
+    println("Begin encoding...")
     data = encode_tokens(tokens, stoi)
 
     # 5. Train/Val Split
+    println("Spliting of data into train and val set...")
     n = floor(Int, TRAIN_RATIO * length(data))
     train_data = data[1:n]
     val_data   = data[n+1:end]
@@ -101,6 +133,7 @@ function run_preprocess()
     println("Size of training data (tokens): $(length(train_data))")
 
     # 6. Save results
+    println("Saving the result")
     data_to_save = Dict(
         "train_data" => train_data,
         "val_data" => val_data,
@@ -110,8 +143,12 @@ function run_preprocess()
     )
     
     BSON.bson(OUTPUT_FILE, data_to_save)
-    println("--- Preprocessing finished. Data saved in $OUTPUT_FILE ---")
+    println( "Preprocessing finished. Data saved in $OUTPUT_FILE")
 end
 
-# Execute the function (this should be run once before the main training script)
-run_preprocess()
+
+
+#################### Preprocessing ##################
+
+# Execute the function
+# run_preprocess()

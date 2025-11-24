@@ -1,11 +1,5 @@
-# Assuming the necessary AD/training utility includes are present:
-# LabAD = joinpath(dirname(@__DIR__), "LabAD")
-# include(joinpath(LabAD, "test", "test.jl"))
-# include(joinpath(LabAD, "solution", "forward.jl"))
-
-include(joinpath(@__DIR__, "train.jl"))
-include(joinpath(@__DIR__, "reverse_vectorized.jl"))
-include(joinpath(@__DIR__, "utils.jl"))
+include(joinpath(@__DIR__,"train.jl"))
+include(joinpath(@__DIR__,"reverse_vectorized.jl"))
 
 using Flux
 using Flux: onehotbatch, softmax
@@ -15,9 +9,11 @@ using BSON # load preprocessed data
 
 Random.seed!(1337)
 
-# Load Preprocessed Data 
+MODEL_OUTPUT_FILE = joinpath("Transformers/", "BSON_files/","single_head_transformer_weights.bson")
 
-const DATA_FILE = joinpath(@__DIR__,"preprocessed_data.bson")
+
+# Load Preprocessed Data 
+const DATA_FILE = joinpath("Transformers/","BSON_files/","preprocessed_data.bson")
 data_loaded = BSON.load(DATA_FILE)
 
 train_data = data_loaded[:"train_data"]
@@ -81,6 +77,42 @@ function scaled_dot_product_attention(Q, K, V, mask=nothing)
     
     return output
 end
+
+
+function get_batch(split)
+    data = split == "train" ? train_data : val_data
+    # Randomly draw starting positions
+    ix = rand(1:length(data)-block_size, batch_size)
+
+    # Create the input matrix x (batch_size × block_size)
+    x = [data[i + t] for i in ix, t in 0:block_size-1]
+
+    # Create the target matrix y (batch_size × block_size)
+    y = [data[i + t + 1] for i in ix, t in 0:block_size-1]
+    return x, y
+end
+
+function create_causal_mask(T, B)
+    N = B * T
+    mask = zeros(Float32, N, N)
+
+    for b in 0:B-1
+        offset = b * T
+        # For each position in the sequence (i: query position)
+        for i in 1:T
+            # For each token position in the sequence (j: key position)
+            for j in (i+1):T
+                # Mask future positions (keys j > queries i)
+                # Apply masking only within the same batch slice
+                mask[offset + i, offset + j] = -1f10
+            end
+        end
+    end
+    
+    return mask
+end
+
+
 
 struct SingleHeadAttention
     d_model::Int      # input/output dimension
@@ -220,8 +252,6 @@ function train_attention_model(;embedding_dimension=16, dim_k=4,dim_v=4, num_ite
                                 rule=Optimisers.Adam(learning_rate))
     
     println("Final Loss after $num_iters_to_run iterations: ", losses[end])
-
-    MODEL_OUTPUT_FILE = joinpath(dir,"single_head_transformer_weights.bson")
     
     # dictionnaire de sauvegarde
     model_data = Dict(
@@ -380,15 +410,15 @@ function load_trained_model(file_path::String)
     return m, W_trained, config
 end
 
-# train a new model 
-N_ITER = 100
-L_RATE = 0.01
-EMB_DIM = 64
-DIM_K = 16
-DIM_V = 16
-w_trained, c_config = train_attention_model(embedding_dimension=EMB_DIM, dim_k=DIM_K, dim_v= DIM_V, num_iters_to_run=N_ITER, learning_rate=L_RATE)
-text_output = generate_text(w_trained, c_config, "The boy said", max_new_tokens=50, temperature=1.2)
-println(text_output)
+# # train a new model 
+# N_ITER = 100
+# L_RATE = 0.01
+# EMB_DIM = 64
+# DIM_K = 16
+# DIM_V = 16
+# w_trained, c_config = train_attention_model(embedding_dimension=EMB_DIM, dim_k=DIM_K, dim_v= DIM_V, num_iters_to_run=N_ITER, learning_rate=L_RATE)
+# text_output = generate_text(w_trained, c_config, "The boy said", max_new_tokens=50, temperature=1.2)
+# println(text_output)
 
 
 # Uncomment to load an already trained model 
