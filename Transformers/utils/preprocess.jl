@@ -105,8 +105,12 @@ function run_preprocess()
     Read an input text -, preprocess it and store the results into a .BSON file 
     """
 
-    println("Starting Preprocessing...")
-    
+    println("\n\n")
+    println("##################################")
+    println("    Beginning of Preprocess")
+    println("##################################")
+
+    println("\n Loading the file...")
     # 1. Read file
     text = read(INPUT_FILE, String)
 

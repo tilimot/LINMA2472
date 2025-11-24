@@ -1,4 +1,4 @@
-include(joinpath("utils/", "transformers.jl"))
+include("transformers.jl")
 
 
 STARTER = "The king said"
