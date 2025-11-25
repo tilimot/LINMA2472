@@ -1,14 +1,12 @@
 # Single-Head Transformer (Custom AD Implementation)
 
-This project implements a causal **Transformer Decoder** (GPT-style) from scratch in Julia. It features a **Single-Head Attention** mechanism and is trained using a **custom Autodifferentiation (AD) system** (`VectReverse`) developed specifically for this project.
-
-The primary goal is to demonstrate a thorough understanding of the Transformer's internal workings and the design of a complete machine learning pipeline utilizing a manual AD approach, optimized for CPU execution.
+This project implements a **Transformer** from scratch in Julia. It features a **Single-Head Attention** mechanism and is trained using a **Handmade Autodifferentiation (AD) system** (`VectReverse`) developed for this project.
 
 ---
 
 ## I. Project Structure
 
-The project organization separates the core logic, AD utilities, configuration, and data:
+The project organization is the following:
 
 | Directory/File | Purpose |
 | :--- | :--- |
