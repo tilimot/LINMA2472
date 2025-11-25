@@ -33,7 +33,7 @@ The model uses **Word Tokenization** with a minimum frequency threshold (`MIN_FR
 The core computational layer uses the Scaled Dot-Product Attention:
 $$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}} + M\right)V$$
 
-* **Causal Masking ($M$):** A strict upper-triangular mask (set to $-\infty$) is applied to the attention scores. This is crucial for generation tasks as it ensures that the prediction at time $t$ depends only on information available at or before time $t$, maintaining the auto-regressive property.
+* **Causal Masking ($M$):** An upper-triangular mask (set to $-\infty$) is applied to the attention scores.
 
 ### 3. Custom Autodifferentiation (AD) and Training
 * **Gradient Calculation:** The entire backward pass is computed using the custom AD system, accessed via **`VectReverse.gradient!`**.
