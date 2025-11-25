@@ -2,12 +2,13 @@ using WordTokenizers
 using StatsBase
 using BSON 
 
+include("config.jl") 
+using .Config
 
 #################### parameters ##################
 
-const DIR = "Transformers/"
-const INPUT_FILE = joinpath(DIR,"corpus","input.txt")
-const OUTPUT_FILE = joinpath(DIR,"BSON_files","preprocessed_data.bson")
+const INPUT_FILE = Config.CORPUS_FILE
+const OUTPUT_FILE = Config.PREPROCESSED_FILE
 
 # Minimum frequency threshold for a word to be included in the vocabulary
 const MIN_FREQ = 10

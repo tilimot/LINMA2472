@@ -1,6 +1,9 @@
 include(joinpath(@__DIR__,"train.jl"))
 include(joinpath(@__DIR__,"reverse_vectorized.jl"))
 
+include(joinpath(@__DIR__, "config.jl"))
+using .Config
+
 using Flux
 using Flux: onehotbatch, softmax
 using Random
@@ -10,24 +13,32 @@ using BSON # load preprocessed data
 Random.seed!(1337)
 
 ###################### Global var ######################
-MODEL_OUTPUT_FILE = joinpath("Transformers/", "BSON_files/","single_head_transformer_weights.bson")
-BATCH_SIZE = 16      # Number of sequences processed in parallel 
-BLOCK_SIZE = 32      # Length of the context 
 
 # load preprocessed data 
 const DATA_FILE = joinpath("Transformers/","BSON_files/","preprocessed_data.bson")
-data_loaded = BSON.load(DATA_FILE)
-
-# extract value from stored file 
-train_data = data_loaded[:"train_data"]
-val_data   = data_loaded[:"val_data"]
-stoi       = data_loaded[:"stoi"]  # dictionnary mapping string to integer --> encoding 
-itos       = data_loaded[:"itos"]  # dictionnary mapping integer to string --> decoding
-vocab_size = data_loaded[:"vocab_size"]
 
 
 
 ###################### Utils ######################
+
+####### Loading data
+
+function load_preprocessed_data()
+    global train_data, val_data, stoi, itos, vocab_size
+
+    # Utiliser les chemins corrigés de Config.jl
+    data_loaded = BSON.load(Config.PREPROCESSED_FILE)
+
+    train_data = data_loaded[:"train_data"]
+    val_data   = data_loaded[:"val_data"]
+    stoi       = data_loaded[:"stoi"]
+    itos       = data_loaded[:"itos"]
+    vocab_size = data_loaded[:"vocab_size"]
+    
+    return
+end
+
+
 
 ####### Encoding / Decoding 
 
@@ -196,25 +207,25 @@ end
 function get_batch(split)
     data = split == "train" ? train_data : val_data
     # Randomly draw starting positions
-    ix = rand(1:length(data)-BLOCK_SIZE, BATCH_SIZE)
+    ix = rand(1:length(data)-Config.BLOCK_SIZE, Config.BATCH_SIZE)
 
     # Create the input matrix x (batch_size × BLOCK_SIZE)
-    x = [data[i + t] for i in ix, t in 0:BLOCK_SIZE-1]
+    x = [data[i + t] for i in ix, t in 0:Config.BLOCK_SIZE-1]
 
     # Create the target matrix y (batch_size × BLOCK_SIZE)
-    y = [data[i + t + 1] for i in ix, t in 0:BLOCK_SIZE-1]
+    y = [data[i + t + 1] for i in ix, t in 0:Config.BLOCK_SIZE-1]
     return x, y
 end
 
 
-function train_attention_model(;embedding_dimension=16, dim_k=4,dim_v=4, num_iters_to_run=100, learning_rate=0.001, dir="Transformers")
+function train_attention_model(;embedding_dimension=16, dim_k=4,dim_v=4, num_iters_to_run=100, learning_rate=0.001, output_file="Transformers/")
     d_model = embedding_dimension 
                           # embedding dimension (reduced from 32)
     d_k = dim_k           # queries/keys dimension (reduced from 8)
     d_v = dim_v           # values dimension (reduced from 8)
     
-    global vocab_size, BLOCK_SIZE, BATCH_SIZE
-    config = (vocab_size, d_model, d_k, d_v, BLOCK_SIZE, BATCH_SIZE)
+    global vocab_size
+    config = (vocab_size, d_model, d_k, d_v, Config.BLOCK_SIZE, Config.BATCH_SIZE)
 
     attention_params = initialize_attention_params(d_model, d_k, d_v)
     
@@ -265,8 +276,8 @@ function train_attention_model(;embedding_dimension=16, dim_k=4,dim_v=4, num_ite
         "config" => config
     )
     
-    BSON.bson(MODEL_OUTPUT_FILE, model_data)
-    println(" Model successfully saved to $(MODEL_OUTPUT_FILE)")
+    BSON.bson(Config.MODEL_FILE, model_data)
+    println(" Model successfully saved to $(Config.MODEL_FILE)")
 
     return W_trained, config
 end
@@ -417,4 +428,41 @@ function load_trained_model(file_path::String)
     println("Model loaded successfully.")
     
     return m, W_trained, config
+end
+
+
+function run_train()
+    # --- TRAINING MODE ---
+        
+    println("\n##################################")
+    println("    Starting Training (Single Head Attention)")
+    println("##################################")
+
+    load_preprocessed_data()
+
+    train_attention_model(embedding_dimension=Config.EMB_DIM, 
+                            dim_k=Config.DIM_K, 
+                            dim_v=Config.DIM_V, 
+                            num_iters_to_run=Config.N_ITER_DEFAULT, 
+                            learning_rate=Config.L_RATE_DEFAULT,
+                             
+                            )
+
+
+end
+
+function run_generate(prompt)
+    println("\n##################################")
+    println("    Starting Generation")
+    println("##################################")
+
+    load_preprocessed_data()
+    
+    m_attention, w_trained, c_config = load_trained_model(Config.MODEL_FILE)
+    text_output = generate_text(w_trained, c_config, prompt, max_new_tokens=Config.MAX_TOKEN, temperature=Config.TEMP)
+    
+    println("prompt: ", prompt, "\n")
+    println("\nGenerated Text:\n")
+    println(text_output)
+
 end

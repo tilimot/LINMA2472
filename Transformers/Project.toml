@@ -1,0 +1,6 @@
+[deps]
+BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+Optimisers = "3bd65402-5787-11e9-1adc-39752487f4e2"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+WordTokenizers = "796a5d58-b03d-544a-977e-18100b691f6e"
