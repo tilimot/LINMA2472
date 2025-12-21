@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.19
+# v0.20.21
 
 using Markdown
 using InteractiveUtils
@@ -425,6 +425,9 @@ function reverse_diff(W, X, y)
     (J_1 .* (W[2]' * J_2)) * X'
 end
 
+# ╔═╡ 87c6a5bc-82bf-44a5-b4d6-6d50285348c0
+@time reverse_diff(W, X, y)
+
 # ╔═╡ 17c91ea8-acb7-4bbd-b0b0-0f8193f45303
 md"## 🚀 GPU acceleration ⚡"
 
@@ -439,9 +442,6 @@ W = [rand(Float32, h, size(X, 1)), rand(Float32, size(y, 1), h)]
 
 # ╔═╡ a580ef44-234a-4ed1-b007-920651415427
 sum((W[2] * tanh.(W[1] * X) - y).^2) / size(y, 2)
-
-# ╔═╡ 87c6a5bc-82bf-44a5-b4d6-6d50285348c0
-@time reverse_diff(W, X, y)
 
 # ╔═╡ 85303791-bdc4-468a-bc40-48ef2a186282
 if CUDA.functional()
@@ -652,7 +652,7 @@ end
 
 function img(url::URL, args...; kws...)
     r, _ = save_image(url, args...; kws...)
-    return r
+    return @htl("<a href=$(url.url)>$r</a>")
 end
 
 function img(file::String, args...; kws...)
@@ -3137,7 +3137,7 @@ version = "1.9.2+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═40baa108-eb68-433f-9917-ac334334f198
+# ╟─40baa108-eb68-433f-9917-ac334334f198
 # ╟─77a7de14-87d2-11ef-21ef-937b8239db5b
 # ╟─e46fb3ff-b26f-4efb-aaa1-760e80017797
 # ╟─af404768-0663-4bc3-81dd-6931b3a486be
